@@ -6,11 +6,10 @@ both sides and exposes top-of-book queries.
 
 from __future__ import annotations
 
-import bisect
 from collections import deque
 from dataclasses import dataclass, field
 
-from .order import Order, Side
+from .order import Order
 
 
 @dataclass

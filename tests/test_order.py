@@ -1,5 +1,6 @@
 import pytest
-from lobster.order import Order, Side, OrderType
+
+from lobster.order import Order, OrderType, Side
 
 
 def test_buy_order_basic():
