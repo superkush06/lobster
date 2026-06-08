@@ -80,3 +80,42 @@ class Analytics:
         sell = sum(t.qty for t in recent if t.aggressor is Side.SELL)
         total = buy + sell
         return (buy - sell) / total if total else 0.0
+
+    # ---- adverse selection (markout) ----------------------------------------
+
+    def markout(self, agent_id: int, horizon: int = 10,
+                passive_only: bool = True) -> float:
+        """Average signed mid move `horizon` steps after the agent's fills.
+
+        For each fill, markout = (+1 if the agent bought, -1 if sold) times the
+        change in mid from the fill step to `horizon` steps later. A **negative**
+        average means the price systematically moves against the agent right
+        after it trades — i.e. **adverse selection**, the core risk a market
+        maker is paid the spread to bear.
+
+        With `passive_only` (default), only fills where the agent provided
+        liquidity (its resting order was hit) are counted — the relevant set
+        for a market maker. Set False to include liquidity-taking fills too.
+        """
+        timeline = [(m.ts, m.mid) for m in self.metrics if m.mid is not None]
+        ts_to_idx = {ts: i for i, (ts, _) in enumerate(timeline)}
+        outs: list[float] = []
+        for t in self.tape:
+            if t.buyer_id == agent_id:
+                sign = 1
+            elif t.seller_id == agent_id:
+                sign = -1
+            else:
+                continue
+            if passive_only:
+                agent_side = Side.BUY if sign == 1 else Side.SELL
+                if agent_side is t.aggressor:  # agent took liquidity, skip
+                    continue
+            i = ts_to_idx.get(t.ts)
+            if i is None:
+                continue
+            j = i + horizon
+            if j >= len(timeline):
+                continue
+            outs.append(sign * (timeline[j][1] - timeline[i][1]))
+        return mean(outs) if outs else 0.0

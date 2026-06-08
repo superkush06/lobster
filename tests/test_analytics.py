@@ -57,3 +57,58 @@ def test_imbalance_bounded():
     a = Analytics(metrics=sim.metrics, tape=sim.tape, agents=sim.agents)
     imb = a.buy_sell_imbalance()
     assert -1.0 <= imb <= 1.0
+
+
+def test_markout_detects_adverse_selection():
+    """Agent 1 buys (passively) then the mid falls -> negative markout."""
+    from lobster.analytics import Analytics
+    from lobster.order import Side
+    from lobster.sim import StepMetrics
+    from lobster.tape import Tape, Trade
+
+    # mid falls 100, 99, 98, ... (monotonic decline)
+    metrics = [StepMetrics(ts=k, best_bid=None, best_ask=None,
+                           mid=100.0 - k, spread=None, n_trades=0)
+               for k in range(20)]
+    tape = Tape()
+    # agent 1's resting BID hit by an aggressive SELL at ts=0 -> agent buys passively
+    tape.record(Trade(price=100.0, qty=10, buyer_id=1, seller_id=2,
+                      ts=0, aggressor=Side.SELL))
+    an = Analytics(metrics=metrics, tape=tape, agents=[])
+    mo = an.markout(agent_id=1, horizon=5)
+    assert mo < 0          # bought, then price dropped -> adverse
+    assert mo == -5.0      # +1 * (mid[5]=95 - mid[0]=100)
+
+
+def test_markout_positive_when_price_moves_favorably():
+    from lobster.analytics import Analytics
+    from lobster.order import Side
+    from lobster.sim import StepMetrics
+    from lobster.tape import Tape, Trade
+
+    metrics = [StepMetrics(ts=k, best_bid=None, best_ask=None,
+                           mid=100.0 + k, spread=None, n_trades=0)
+               for k in range(20)]
+    tape = Tape()
+    tape.record(Trade(price=100.0, qty=10, buyer_id=1, seller_id=2,
+                      ts=0, aggressor=Side.SELL))
+    an = Analytics(metrics=metrics, tape=tape, agents=[])
+    assert an.markout(agent_id=1, horizon=5) == 5.0  # bought, price rose
+
+
+def test_markout_passive_only_skips_liquidity_taking():
+    from lobster.analytics import Analytics
+    from lobster.order import Side
+    from lobster.sim import StepMetrics
+    from lobster.tape import Tape, Trade
+
+    metrics = [StepMetrics(ts=k, best_bid=None, best_ask=None,
+                           mid=100.0 - k, spread=None, n_trades=0)
+               for k in range(20)]
+    tape = Tape()
+    # agent 1 BUYS aggressively (aggressor=BUY) -> excluded under passive_only
+    tape.record(Trade(price=100.0, qty=10, buyer_id=1, seller_id=2,
+                      ts=0, aggressor=Side.BUY))
+    an = Analytics(metrics=metrics, tape=tape, agents=[])
+    assert an.markout(agent_id=1, horizon=5, passive_only=True) == 0.0
+    assert an.markout(agent_id=1, horizon=5, passive_only=False) == -5.0
