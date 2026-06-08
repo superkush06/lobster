@@ -146,6 +146,35 @@ class OrderBook:
             del prices[idx]
         return cancelled
 
+    def reduce(self, order_id: int, qty: int) -> int:
+        """Partially reduce a resting order by `qty` (e.g. partial execution).
+
+        Drops the order from the index if it reaches zero, and prunes the
+        price level if it becomes empty. Returns the quantity removed (0 if
+        the order is not resting).
+        """
+        info = self._index.get(order_id)
+        if info is None:
+            return 0
+        side, price = info
+        if side is Side.BUY:
+            levels, prices = self._bids, self._bid_prices
+            key = -price
+        else:
+            levels, prices = self._asks, self._ask_prices
+            key = price
+        idx = bisect.bisect_left(prices, key)
+        if idx >= len(prices) or prices[idx] != key:
+            return 0
+        removed = levels[idx].reduce(order_id, qty)
+        still_there = any(o.id == order_id for o in levels[idx].orders)
+        if not still_there:
+            self._index.pop(order_id, None)
+        if not levels[idx].orders:
+            del levels[idx]
+            del prices[idx]
+        return removed
+
     # ---- queries ------------------------------------------------------------
 
     def depth(self, side: Side, levels: int = 5) -> list[tuple[float, int]]:

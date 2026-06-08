@@ -12,10 +12,11 @@ from .impact import LinearImpact, SquareRootImpact
 from .latency import ConstantLatency, JitteredLatency
 from .matching import match
 from .order import Order, OrderType, Side, next_order_id
+from .replay import Message, apply_message, parse_lobster_line, replay, replay_csv
 from .sim import Simulation
 from .tape import Tape, Trade
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "Side", "OrderType", "Order", "next_order_id",
     "PriceLevel", "OrderBook",
@@ -25,4 +26,5 @@ __all__ = [
     "LinearImpact", "SquareRootImpact",
     "Simulation",
     "Analytics",
+    "Message", "parse_lobster_line", "apply_message", "replay", "replay_csv",
 ]
