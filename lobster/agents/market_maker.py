@@ -16,14 +16,26 @@ class MarketMakerAgent(Agent):
 
     def __init__(self, agent_id: int, half_spread: float = 0.5,
                  qty: int = 20, inv_skew: float = 0.01,
-                 inventory_cap: int = 200) -> None:
+                 inventory_cap: int = 200, cancel_replace: bool = True) -> None:
         super().__init__(agent_id)
         self.half_spread = half_spread
         self.qty = qty
         self.inv_skew = inv_skew
         self.inventory_cap = inventory_cap
+        self.cancel_replace = cancel_replace
+        # Order ids the maker currently has resting on the book.
+        self._resting_ids: list[int] = []
 
     def step(self, ctx: AgentContext) -> list[Order]:
+        # Cancel/replace: pull our previous quotes before re-quoting so the
+        # book doesn't accumulate stale layers. Cancelling an already-filled
+        # (or partially-filled) order is a safe no-op — the book ignores ids
+        # it no longer holds.
+        if self.cancel_replace:
+            for oid in self._resting_ids:
+                ctx.book.cancel(oid)
+            self._resting_ids = []
+
         mid = ctx.book.mid
         if mid is None:
             mid = 100.0
@@ -37,4 +49,5 @@ class MarketMakerAgent(Agent):
         if self.inventory > -self.inventory_cap:
             orders.append(Order(side=Side.SELL, qty=self.qty, price=ask_price,
                                 agent_id=self.id, ts=ctx.ts))
+        self._resting_ids = [o.id for o in orders]
         return orders

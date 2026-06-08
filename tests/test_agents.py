@@ -102,3 +102,34 @@ def test_momentum_agent_chases_imbalance(seed_rng):
     assert len(orders) == 1
     assert orders[0].side is Side.BUY
     assert orders[0].type is OrderType.MARKET
+
+
+def test_market_maker_cancels_stale_quotes():
+    """With cancel_replace on, the maker pulls its previous quotes each tick,
+    so its resting layers never accumulate beyond the two fresh quotes."""
+    book = OrderBook()
+    mm = MarketMakerAgent(agent_id=1, half_spread=0.5, qty=10, inv_skew=0.0,
+                          cancel_replace=True)
+    rng = random.Random(0)
+    for ts in range(20):
+        ctx = AgentContext(book=book, tape=Tape(), rng=rng, ts=ts)
+        for o in mm.step(ctx):
+            book.add(o)
+    # Only the two most-recent quotes should rest (mid drifts none here).
+    assert len(book) == 2
+
+
+def test_market_maker_without_cancel_accumulates():
+    """Control: with cancel_replace off, stale layers pile up across ticks."""
+    book = OrderBook()
+    mm = MarketMakerAgent(agent_id=1, half_spread=0.5, qty=10, inv_skew=0.0,
+                          cancel_replace=False)
+    rng = random.Random(0)
+    for ts in range(20):
+        # Nudge mid so each tick quotes at a new price level
+        book.add(Order(Side.BUY, qty=1, price=90.0 + ts * 0.1))
+        ctx = AgentContext(book=book, tape=Tape(), rng=rng, ts=ts)
+        for o in mm.step(ctx):
+            book.add(o)
+    # Far more than 2 resting orders — the accumulation the README warns about.
+    assert len(book) > 10
