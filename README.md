@@ -5,7 +5,13 @@
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A limit order book microstructure simulator with realistic price-time priority
-matching, latency models, market impact, and pluggable agents.
+matching, latency models, market impact, and pluggable agents — plus a
+**LOBSTER-format message replay** so you can drive it with real NASDAQ data.
+
+![lobster simulation](docs/demo.png)
+
+*A 4-agent run (2 noise · 1 momentum · 1 market maker): mid-price path on top,
+the resulting bid-ask spread below. Reproduce with `python examples/render_hero.py`.*
 
 ## TL;DR
 
@@ -36,10 +42,15 @@ hackable middle ground.
   and cancel semantics
 - **Latency models**: constant + jittered (gamma) network/processing delays
 - **Market-impact models**: linear and Almgren–Chriss-style square-root
-- **Pluggable agents**: `NoiseAgent`, `MarketMakerAgent` (inventory-skewed),
-  `MomentumAgent` (responds to tape imbalance)
-- **Analytics**: spread, depth, queue position estimator, agent P&L
+- **Pluggable agents**: `NoiseAgent`, `MarketMakerAgent` (inventory-skewed,
+  with cancel/replace), `MomentumAgent` (responds to tape imbalance)
+- **LOBSTER message replay**: reconstruct the book from real NASDAQ-style
+  `add / cancel / delete / execute` message streams (`replay_csv`)
+- **Analytics**: spread, depth, queue position, agent P&L, and an
+  **adverse-selection markout** metric
 - **Deterministic** under a given seed — reproducible simulations
+- **Fast**: ~485k inserts/s, ~357k matches/s, ~656k replayed msg/s
+  (pure Python; see `benchmarks/throughput.py`)
 
 ## Install
 
@@ -93,26 +104,30 @@ and known limitations.
 Running `examples/market_maker_demo.py --steps 5000 --seed 7`:
 
 ```
-Trades:        10000
-Spread mean:   1.4299
-Spread p95:    4.6100
+Trades:        5068
+Spread mean:   0.2789
+Spread p95:    0.6500
 Agent P&L:
-  agent 1 (   noise): cash=-64686.61  inv=+1259  mtm=+36379.61
-  agent 2 (   noise): cash=-30673.03  inv= +854  mtm=+37881.82
-  agent 3 (momentum): cash=+57122.00  inv=-2277  mtm=-125664.18
-  agent 4 (   maker): cash=+38237.64  inv= +164  mtm=+51402.74
+  agent 1 (   noise): cash=-207580.76  inv=+2114  mtm= -1465.76
+  agent 2 (   noise): cash=-159881.92  inv=+1638  mtm=  -176.92
+  agent 3 (momentum): cash=+366517.41  inv=-3751  mtm=  +794.91
+  agent 4 (   maker): cash=  +945.27  inv=   -1  mtm=  +847.77
 ```
 
-Market maker earns the spread; momentum gets adverse-selected (typical).
-Noise traders break even on the random walk + provide inventory float.
+The market maker holds a flat inventory (≈0) and books a steady profit; with
+cancel/replace the spread now stays tight (mean ≈ 0.28 vs ≈ 1.43 before).
+Quantify the maker's adverse selection with `Analytics.markout(4, horizon=10)`
+(negative = the price moves against its fills — the risk the spread pays for).
+
+See [`examples/walkthrough.ipynb`](examples/walkthrough.ipynb) for an
+end-to-end notebook (build → simulate → plot → analyze → replay real data).
 
 ## Known limitations
 
-- Market-maker agent does not cancel stale quotes, so the book accumulates
-  old layers. This widens observed spread under sustained activity. A
-  full cancel/replace cycle is on the roadmap.
 - Latency model is applied per-agent but the matching engine itself is
   synchronous (no queue arbitration at sub-tick resolution).
+- Replay reconstructs the *visible* book only; LOBSTER hidden-order executions
+  (type 5) are intentionally skipped.
 - Greeks/risk are intentionally out of scope — see `optune` for those.
 
 ## License

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lobster"
-version = "0.1.0"
+version = "0.2.0"
 description = "Limit order book microstructure simulator"
 readme = "README.md"
 license = {text = "MIT"}
