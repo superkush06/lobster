@@ -27,9 +27,28 @@ class PriceLevel:
     total_qty: int = 0
 
     def add(self, order: Order) -> None:
-        assert order.price == self.price
+        if order.price != self.price:
+            raise ValueError(
+                f"order price {order.price} does not match level {self.price}"
+            )
         self.orders.append(order)
         self.total_qty += order.qty
+
+    def reduce(self, order_id: int, qty: int) -> int:
+        """Reduce a resting order's size by `qty` (partial execution/cancel).
+
+        Removes the order entirely if it reaches zero. Returns the quantity
+        actually removed (0 if `order_id` is not on this level).
+        """
+        for i, o in enumerate(self.orders):
+            if o.id == order_id:
+                removed = min(qty, o.qty)
+                o.qty -= removed
+                self.total_qty -= removed
+                if o.qty == 0:
+                    del self.orders[i]
+                return removed
+        return 0
 
     def cancel(self, order_id: int) -> Order | None:
         for i, o in enumerate(self.orders):
@@ -89,7 +108,8 @@ class OrderBook:
     # ---- mutations ----------------------------------------------------------
 
     def add(self, order: Order) -> None:
-        assert order.price is not None
+        if order.price is None:
+            raise ValueError("cannot rest an order with no price on the book")
         if order.is_buy:
             levels, prices = self._bids, self._bid_prices
             key = -order.price

@@ -1,4 +1,6 @@
-from lobster.book import OrderBook
+import pytest
+
+from lobster.book import OrderBook, PriceLevel
 from lobster.order import Order, Side
 
 
@@ -78,3 +80,31 @@ def test_fifo_within_level():
     # o1 arrived first, should be at front of queue
     level = next(b.iter_levels(Side.BUY))
     assert level.orders[0].id == o1.id
+
+
+def test_price_level_rejects_mismatched_price():
+    level = PriceLevel(price=100.0)
+    with pytest.raises(ValueError):
+        level.add(Order(Side.BUY, qty=10, price=101.0))
+
+
+def test_price_level_reduce_partial_and_full():
+    level = PriceLevel(price=100.0)
+    o = Order(Side.BUY, qty=10, price=100.0)
+    level.add(o)
+    # partial reduction
+    removed = level.reduce(o.id, 4)
+    assert removed == 4
+    assert o.qty == 6
+    assert level.total_qty == 6
+    # full reduction removes the order from the queue
+    removed = level.reduce(o.id, 99)
+    assert removed == 6
+    assert len(level) == 0
+
+
+def test_price_level_reduce_unknown_id_is_noop():
+    level = PriceLevel(price=100.0)
+    level.add(Order(Side.BUY, qty=10, price=100.0))
+    assert level.reduce(order_id=999, qty=5) == 0
+    assert level.total_qty == 10
