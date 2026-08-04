@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..book import OrderBook
+    from ..latency import LatencyModel
     from ..order import Order
     from ..tape import Tape
 
@@ -22,10 +23,15 @@ class AgentContext:
 
 
 class Agent(ABC):
-    def __init__(self, agent_id: int) -> None:
+    def __init__(self, agent_id: int,
+                 latency: LatencyModel | None = None) -> None:
         self.id = agent_id
         self.inventory: int = 0
         self.cash: float = 0.0
+        # Submission delay model: orders this agent emits arrive on the book
+        # `latency.sample(rng)` time units after the decision. None = instant
+        # (the synchronous, pre-latency behavior).
+        self.latency = latency
 
     def on_fill(self, side_sign: int, price: float, qty: int) -> None:
         # +1 for buy fills (we paid), -1 for sells (we received)

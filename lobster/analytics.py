@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from bisect import bisect_right
 from collections.abc import Iterable
 from dataclasses import dataclass
 from statistics import mean, pstdev
@@ -81,6 +82,22 @@ class Analytics:
         total = buy + sell
         return (buy - sell) / total if total else 0.0
 
+    # ---- tape hygiene ---------------------------------------------------------
+
+    def wash_trade_fraction(self) -> float:
+        """Fraction of taped trades where an agent traded with itself.
+
+        Real venues prevent these (self-trade prevention); a high value
+        means tape-derived signals (imbalance, markout, momentum) are being
+        computed on self-generated noise. With the default
+        `Simulation(stp="cancel_resting")` this is 0 by construction.
+        """
+        n = len(self.tape)
+        if n == 0:
+            return 0.0
+        washes = sum(1 for t in self.tape if t.buyer_id == t.seller_id)
+        return washes / n
+
     # ---- adverse selection (markout) ----------------------------------------
 
     def markout(self, agent_id: int, horizon: int = 10,
@@ -96,9 +113,13 @@ class Analytics:
         With `passive_only` (default), only fills where the agent provided
         liquidity (its resting order was hit) are counted — the relevant set
         for a market maker. Set False to include liquidity-taking fills too.
+
+        Fills are anchored to the **latest metrics row at or before** the
+        fill's timestamp, so trades that print between metric samples (e.g.
+        latency-delayed arrivals at fractional times) are still counted.
         """
         timeline = [(m.ts, m.mid) for m in self.metrics if m.mid is not None]
-        ts_to_idx = {ts: i for i, (ts, _) in enumerate(timeline)}
+        ts_axis = [ts for ts, _ in timeline]
         outs: list[float] = []
         for t in self.tape:
             if t.buyer_id == agent_id:
@@ -111,9 +132,9 @@ class Analytics:
                 agent_side = Side.BUY if sign == 1 else Side.SELL
                 if agent_side is t.aggressor:  # agent took liquidity, skip
                     continue
-            i = ts_to_idx.get(t.ts)
-            if i is None:
-                continue
+            i = bisect_right(ts_axis, t.ts) - 1
+            if i < 0:
+                continue  # fill precedes the first mid observation
             j = i + horizon
             if j >= len(timeline):
                 continue

@@ -26,7 +26,11 @@ def main() -> None:
                        qty=8, market_order_rate=0.25),
             NoiseAgent(agent_id=2, intensity=0.5, spread_offset=0.6,
                        qty=8, market_order_rate=0.25),
-            MomentumAgent(agent_id=3, lookback=20, threshold=0.35, qty=5),
+            # Momentum needs a position cap and a higher threshold now that
+            # the tape is wash-free: its own prints feed its signal, and an
+            # uncapped chaser turns that feedback into a runaway trend.
+            MomentumAgent(agent_id=3, lookback=20, threshold=0.5, qty=5,
+                          max_position=100),
             MarketMakerAgent(agent_id=4, half_spread=0.4, qty=12,
                              inv_skew=0.02),
         ],

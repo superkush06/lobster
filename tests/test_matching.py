@@ -1,3 +1,5 @@
+import pytest
+
 from lobster.book import OrderBook
 from lobster.matching import match
 from lobster.order import Order, OrderType, Side
@@ -74,3 +76,75 @@ def test_fifo_priority_within_level():
     # o1 (agent 11) should be fully consumed first because of FIFO.
     assert trades[0].seller_id == 11
     assert trades[0].buyer_id == 99
+
+
+def test_market_order_remainder_stays_on_taker():
+    """A 50-lot market buy against 5 on the book fills 5; the unfilled 45
+    must remain observable as the taker's leaves quantity, and must not
+    silently rest on the book."""
+    book = OrderBook()
+    book.add(Order(Side.SELL, qty=5, price=100.0))
+    taker = Order(Side.BUY, qty=50, type=OrderType.MARKET)
+    trades = match(book, taker)
+    assert sum(t.qty for t in trades) == 5
+    assert taker.qty == 45          # leaves qty — book exhausted
+    assert book.best_bid is None    # remainder did NOT rest
+    assert book.best_ask is None
+
+
+def test_full_fill_leaves_zero_qty_on_taker():
+    book = OrderBook()
+    book.add(Order(Side.SELL, qty=10, price=100.0))
+    taker = Order(Side.BUY, qty=10, price=100.0)
+    match(book, taker)
+    assert taker.qty == 0
+
+
+# ---- self-trade prevention ----------------------------------------------------
+
+
+def test_no_stp_by_default_agent_can_self_trade():
+    """Backward-compat: match() alone still permits self-trades."""
+    book = OrderBook()
+    book.add(Order(Side.SELL, qty=10, price=100.0, agent_id=7))
+    trades = match(book, Order(Side.BUY, qty=10, price=100.0, agent_id=7))
+    assert len(trades) == 1
+    assert trades[0].buyer_id == trades[0].seller_id == 7
+
+
+def test_stp_cancel_resting_removes_own_quote_and_continues():
+    book = OrderBook()
+    book.add(Order(Side.SELL, qty=10, price=100.0, agent_id=7))   # own stale ask
+    book.add(Order(Side.SELL, qty=10, price=100.0, agent_id=8))   # someone else
+    trades = match(book, Order(Side.BUY, qty=10, price=100.0, agent_id=7),
+                   stp="cancel_resting")
+    assert len(trades) == 1
+    assert trades[0].seller_id == 8          # own order skipped, not traded
+    assert all(t.buyer_id != t.seller_id for t in trades)
+    assert book.best_ask is None             # own stale quote was cancelled
+
+
+def test_stp_cancel_taker_keeps_resting_order():
+    book = OrderBook()
+    book.add(Order(Side.SELL, qty=10, price=100.0, agent_id=7))
+    taker = Order(Side.BUY, qty=10, price=100.0, agent_id=7)
+    trades = match(book, taker, stp="cancel_taker")
+    assert trades == []
+    assert book.best_ask == 100.0            # resting order survives
+    assert book.best_bid is None             # taker remainder NOT rested
+
+
+def test_stp_cancel_resting_rests_taker_if_no_liquidity_left():
+    book = OrderBook()
+    book.add(Order(Side.SELL, qty=10, price=100.0, agent_id=7))
+    taker = Order(Side.BUY, qty=10, price=100.0, agent_id=7)
+    trades = match(book, taker, stp="cancel_resting")
+    assert trades == []
+    assert book.best_ask is None
+    assert book.best_bid == 100.0            # taker rests after own quote pulled
+
+
+def test_stp_rejects_unknown_policy():
+    book = OrderBook()
+    with pytest.raises(ValueError):
+        match(book, Order(Side.BUY, qty=1, price=1.0), stp="decrement")

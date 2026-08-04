@@ -112,3 +112,54 @@ def test_markout_passive_only_skips_liquidity_taking():
     an = Analytics(metrics=metrics, tape=tape, agents=[])
     assert an.markout(agent_id=1, horizon=5, passive_only=True) == 0.0
     assert an.markout(agent_id=1, horizon=5, passive_only=False) == -5.0
+
+
+def test_markout_counts_fills_between_metric_samples():
+    """Regression: fills stamped at fractional times (latency-delayed
+    arrivals) used to be silently skipped because markout required an exact
+    timestamp match with a metrics row."""
+    from lobster.analytics import Analytics
+    from lobster.order import Side
+    from lobster.sim import StepMetrics
+    from lobster.tape import Tape, Trade
+
+    metrics = [StepMetrics(ts=float(k), best_bid=None, best_ask=None,
+                           mid=100.0 + k, spread=None, n_trades=0)
+               for k in range(20)]
+    tape = Tape()
+    # Passive buy fill at ts=2.5 — between metric rows 2 and 3.
+    tape.record(Trade(price=100.0, qty=10, buyer_id=1, seller_id=2,
+                      ts=2.5, aggressor=Side.SELL))
+    an = Analytics(metrics=metrics, tape=tape, agents=[])
+    # Anchored at row ts=2 (mid 102); 5 rows later mid=107 -> markout +5.
+    assert an.markout(agent_id=1, horizon=5) == 5.0
+
+
+def test_markout_skips_fills_before_first_mid():
+    from lobster.analytics import Analytics
+    from lobster.order import Side
+    from lobster.sim import StepMetrics
+    from lobster.tape import Tape, Trade
+
+    metrics = [StepMetrics(ts=float(k), best_bid=None, best_ask=None,
+                           mid=100.0, spread=None, n_trades=0)
+               for k in range(5, 10)]
+    tape = Tape()
+    tape.record(Trade(price=100.0, qty=1, buyer_id=1, seller_id=2,
+                      ts=0.0, aggressor=Side.SELL))
+    an = Analytics(metrics=metrics, tape=tape, agents=[])
+    assert an.markout(agent_id=1, horizon=2) == 0.0
+
+
+def test_wash_trade_fraction_counts_self_trades():
+    from lobster.analytics import Analytics
+    from lobster.order import Side
+    from lobster.tape import Tape, Trade
+
+    tape = Tape()
+    tape.record(Trade(price=1.0, qty=1, buyer_id=1, seller_id=1,
+                      ts=0, aggressor=Side.BUY))
+    tape.record(Trade(price=1.0, qty=1, buyer_id=1, seller_id=2,
+                      ts=1, aggressor=Side.BUY))
+    an = Analytics(metrics=[], tape=tape, agents=[])
+    assert an.wash_trade_fraction() == 0.5

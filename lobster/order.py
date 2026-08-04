@@ -33,6 +33,10 @@ class Order:
 
     `qty` mutates with fills; `price` is immutable. `id` is auto-assigned
     monotonically increasing if not given.
+
+    `ttl` (time-to-live) is an optional lifetime in simulated time units:
+    a `Simulation` cancels the resting remainder `ttl` after submission.
+    The book itself does not enforce it.
     """
 
     side: Side
@@ -42,6 +46,7 @@ class Order:
     agent_id: int = 0
     id: int = field(default_factory=next_order_id)
     ts: float = 0.0
+    ttl: float | None = None
 
     def __post_init__(self) -> None:
         if self.qty <= 0:
@@ -50,6 +55,8 @@ class Order:
             raise ValueError("limit order requires a price")
         if self.type is OrderType.MARKET and self.price is not None:
             raise ValueError("market order must not specify a price")
+        if self.ttl is not None and self.ttl <= 0:
+            raise ValueError(f"ttl must be positive, got {self.ttl}")
 
     @property
     def is_buy(self) -> bool:

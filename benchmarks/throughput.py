@@ -25,7 +25,8 @@ def bench_add(n: int = 200_000, seed: int = 0) -> float:
     for _ in range(n):
         side = Side.BUY if rng.random() < 0.5 else Side.SELL
         price = round(100.0 + rng.gauss(0.0, 2.0), 2)
-        book.add(Order(side=side, qty=10, price=price))
+        # allow_crossed: raw insert benchmark, prices are random on purpose
+        book.add(Order(side=side, qty=10, price=price), allow_crossed=True)
     return n / (time.perf_counter() - t0)
 
 

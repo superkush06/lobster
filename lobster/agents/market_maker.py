@@ -16,13 +16,19 @@ class MarketMakerAgent(Agent):
 
     def __init__(self, agent_id: int, half_spread: float = 0.5,
                  qty: int = 20, inv_skew: float = 0.01,
-                 inventory_cap: int = 200, cancel_replace: bool = True) -> None:
-        super().__init__(agent_id)
+                 inventory_cap: int = 200, cancel_replace: bool = True,
+                 ref_price: float = 100.0, latency=None) -> None:
+        super().__init__(agent_id, latency=latency)
         self.half_spread = half_spread
         self.qty = qty
         self.inv_skew = inv_skew
         self.inventory_cap = inventory_cap
         self.cancel_replace = cancel_replace
+        # Quote anchor when the book has no mid: last mid we observed, seeded
+        # with `ref_price` before the first observation. Quoting a hardcoded
+        # constant here would inject an artificial price jump whenever one
+        # side of the book momentarily empties after the price has drifted.
+        self._last_mid = ref_price
         # Order ids the maker currently has resting on the book.
         self._resting_ids: list[int] = []
 
@@ -38,7 +44,9 @@ class MarketMakerAgent(Agent):
 
         mid = ctx.book.mid
         if mid is None:
-            mid = 100.0
+            mid = self._last_mid
+        else:
+            self._last_mid = mid
         skew = self.inv_skew * self.inventory
         bid_price = round(mid - self.half_spread - skew, 2)
         ask_price = round(mid + self.half_spread - skew, 2)

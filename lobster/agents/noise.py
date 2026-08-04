@@ -20,21 +20,33 @@ class NoiseAgent(Agent):
 
     def __init__(self, agent_id: int, intensity: float = 0.3,
                  spread_offset: float = 0.5, qty: int = 10,
-                 market_order_rate: float = 0.0) -> None:
-        super().__init__(agent_id)
+                 market_order_rate: float = 0.0,
+                 ref_price: float = 100.0,
+                 ttl: float | None = 50.0, latency=None) -> None:
+        super().__init__(agent_id, latency=latency)
         if not 0.0 <= market_order_rate <= 1.0:
             raise ValueError("market_order_rate must be in [0, 1]")
         self.intensity = intensity
         self.spread_offset = spread_offset
         self.qty = qty
         self.market_order_rate = market_order_rate
+        # Passive quotes expire after `ttl` ticks (None = good-till-cancel).
+        # Without expiry a long noise-only run leaves one resting order per
+        # submission and the book thickens without bound.
+        self.ttl = ttl
+        # Anchor when the book has no mid: last observed mid (seeded with
+        # `ref_price`), so a one-sided book doesn't snap quotes back to a
+        # hardcoded constant after the price has drifted away from it.
+        self._last_mid = ref_price
 
     def step(self, ctx: AgentContext) -> list[Order]:
         if ctx.rng.random() > self.intensity:
             return []
         mid = ctx.book.mid
         if mid is None:
-            mid = 100.0
+            mid = self._last_mid
+        else:
+            self._last_mid = mid
         side = Side.BUY if ctx.rng.random() < 0.5 else Side.SELL
         if ctx.rng.random() < self.market_order_rate:
             if side is Side.BUY and ctx.book.best_ask is None:
@@ -48,4 +60,4 @@ class NoiseAgent(Agent):
         else:
             price = round(mid + self.spread_offset * ctx.rng.random(), 2)
         return [Order(side=side, qty=self.qty, price=price,
-                      agent_id=self.id, ts=ctx.ts)]
+                      agent_id=self.id, ts=ctx.ts, ttl=self.ttl)]

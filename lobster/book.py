@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import bisect
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 
 from .order import Order, Side
@@ -70,6 +70,27 @@ class OrderBook:
         self._ask_prices: list[float] = []
         self._index: dict[int, tuple[Side, float]] = {}
 
+    @classmethod
+    def from_snapshot(cls, bids: Iterable[tuple[float, int]],
+                      asks: Iterable[tuple[float, int]],
+                      ts: float = 0.0) -> OrderBook:
+        """Seed a book from per-level ``(price, qty)`` depth (e.g. the first
+        row of a LOBSTER orderbook file), so a message replay does not start
+        from an empty book.
+
+        Each level becomes one synthetic resting order with a fresh
+        auto-assigned id. Levels with zero/negative qty (LOBSTER pads empty
+        levels with dummy entries) are skipped.
+        """
+        book = cls()
+        for side, levels in ((Side.BUY, bids), (Side.SELL, asks)):
+            for price, qty in levels:
+                if qty <= 0:
+                    continue
+                book.add(Order(side=side, qty=qty, price=price,
+                               agent_id=0, ts=ts))
+        return book
+
     # ---- top-of-book properties ---------------------------------------------
 
     @property
@@ -96,7 +117,14 @@ class OrderBook:
 
     @property
     def microprice(self) -> float | None:
-        """Mid weighted by opposite-side size (Stoikov 2017 microprice)."""
+        """Size-weighted mid (a.k.a. weighted mid): each side's price
+        weighted by the *opposite* side's top-of-book size.
+
+        This is the common imbalance-weighted proxy for where the next
+        trade is headed — note it is *not* Stoikov's (2018) micro-price,
+        which is a Markov-chain estimator constructed precisely because
+        the weighted mid is a biased predictor.
+        """
         if not self._bids or not self._asks:
             return None
         bb, ba = self._bids[0], self._asks[0]
@@ -107,9 +135,33 @@ class OrderBook:
 
     # ---- mutations ----------------------------------------------------------
 
-    def add(self, order: Order) -> None:
+    def add(self, order: Order, *, allow_crossed: bool = False) -> None:
+        """Rest `order` on the book without matching.
+
+        Adding a bid at/above the best ask (or an ask at/below the best bid)
+        would silently produce a crossed book — negative spread, nonsense mid
+        and microprice — so it raises `ValueError`. Route marketable orders
+        through `match()` instead; pass `allow_crossed=True` only when
+        deliberately reconstructing an externally-observed state (e.g. a
+        message replay with incomplete pre-window context).
+        """
         if order.price is None:
             raise ValueError("cannot rest an order with no price on the book")
+        if not allow_crossed:
+            if order.is_buy:
+                ba = self.best_ask
+                if ba is not None and order.price >= ba:
+                    raise ValueError(
+                        f"bid {order.price} crosses best ask {ba}; "
+                        f"use match() for marketable orders"
+                    )
+            else:
+                bb = self.best_bid
+                if bb is not None and order.price <= bb:
+                    raise ValueError(
+                        f"ask {order.price} crosses best bid {bb}; "
+                        f"use match() for marketable orders"
+                    )
         if order.is_buy:
             levels, prices = self._bids, self._bid_prices
             key = -order.price

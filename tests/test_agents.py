@@ -133,3 +133,59 @@ def test_market_maker_without_cancel_accumulates():
             book.add(o)
     # Far more than 2 resting orders — the accumulation the README warns about.
     assert len(book) > 10
+
+
+def test_market_maker_anchors_to_last_mid_not_hardcoded_100():
+    """If the book empties after the price drifted, the maker must quote
+    around the last mid it saw — not snap back to 100 and flash-crash."""
+    book = OrderBook()
+    book.add(Order(Side.BUY, qty=10, price=149.5, agent_id=0, ts=0))
+    book.add(Order(Side.SELL, qty=10, price=150.5, agent_id=0, ts=0))
+    mm = MarketMakerAgent(agent_id=2, half_spread=0.5, qty=10, inv_skew=0.0,
+                          cancel_replace=False)
+    rng = random.Random(0)
+    mm.step(AgentContext(book=book, tape=Tape(), rng=rng, ts=0))  # sees mid=150
+    empty = OrderBook()  # book momentarily one-sided/empty
+    orders = mm.step(AgentContext(book=empty, tape=Tape(), rng=rng, ts=1))
+    for o in orders:
+        assert abs(o.price - 150.0) < 5.0, f"quoted {o.price}, expected near 150"
+
+
+def test_noise_agent_anchors_to_last_mid_not_hardcoded_100():
+    book = OrderBook()
+    book.add(Order(Side.BUY, qty=10, price=149.5, agent_id=0, ts=0))
+    book.add(Order(Side.SELL, qty=10, price=150.5, agent_id=0, ts=0))
+    a = NoiseAgent(agent_id=1, intensity=1.0)
+    rng = random.Random(0)
+    a.step(AgentContext(book=book, tape=Tape(), rng=rng, ts=0))  # sees mid=150
+    empty = OrderBook()
+    orders = a.step(AgentContext(book=empty, tape=Tape(), rng=rng, ts=1))
+    assert orders, "intensity=1.0 must emit an order"
+    assert abs(orders[0].price - 150.0) < 5.0
+
+
+def test_ref_price_seeds_first_quote():
+    """Before any mid is ever observed, quotes anchor at `ref_price`."""
+    mm = MarketMakerAgent(agent_id=2, half_spread=0.5, qty=10, inv_skew=0.0,
+                          ref_price=42.0)
+    rng = random.Random(0)
+    orders = mm.step(AgentContext(book=OrderBook(), tape=Tape(), rng=rng, ts=0))
+    assert {o.price for o in orders} == {41.5, 42.5}
+
+
+def test_momentum_agent_respects_max_position(seed_rng):
+    """A capped momentum agent must not chase beyond its position limit —
+    uncapped chasing on a wash-free tape feeds back into its own signal."""
+    book = OrderBook()
+    book.add(Order(side=Side.SELL, qty=10, price=100.5, agent_id=0, ts=0))
+    tape = Tape()
+    for _ in range(20):
+        tape.record(Trade(price=100, qty=10, buyer_id=0, seller_id=0,
+                          ts=0, aggressor=Side.BUY))
+    m = MomentumAgent(agent_id=3, lookback=20, threshold=0.3, qty=5,
+                      max_position=10)
+    m.inventory = 8  # one more 5-lot buy would breach the cap
+    ctx = AgentContext(book=book, tape=tape, rng=seed_rng, ts=1)
+    assert m.step(ctx) == []
+    m.inventory = 5  # exactly at the limit after the next buy -> allowed
+    assert len(m.step(ctx)) == 1

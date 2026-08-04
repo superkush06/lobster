@@ -4,53 +4,28 @@
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A limit order book microstructure simulator with realistic price-time priority
-matching, latency models, market impact, and pluggable agents — plus a
-**LOBSTER-format message replay** so you can drive it with real NASDAQ data.
+A limit order book is a queue, and the only way to the front of one is to be
+early.
 
-![lobster simulation](docs/demo.png)
+`lobster` is a matching engine and an agent simulator built around that
+sentence. Orders reach the book over a wire that has latency, price-time
+priority decides who fills, and everything the package reports — queue
+position, adverse selection, market-maker P&L — is measured off the tape
+those races produce. It is about 1,900 lines of dependency-free Python
+backed by rather more than that in tests, and it will tell you — with
+numbers, against the literature — when its own output has stopped looking
+like a real market.
 
-*A 4-agent run (2 noise · 1 momentum · 1 market maker): mid-price path on top,
-the resulting bid-ask spread below. Reproduce with `python examples/render_hero.py`.*
+![the book through time](docs/book_depth.png)
 
-## TL;DR
-
-```python
-from lobster import OrderBook, Order, Side, OrderType, match
-
-book = OrderBook()
-book.add(Order(Side.BUY, qty=100, price=99.5))
-book.add(Order(Side.SELL, qty=50, price=100.5))
-# Marketable buy sweeps the ask:
-trades = match(book, Order(Side.BUY, qty=30, price=None, type=OrderType.MARKET))
-print(trades[0].price)  # 100.5
-print(book.spread)      # 1.0
-```
-
-## Why
-
-The limit order book is the central data structure of every electronic market.
-Most interesting questions in market microstructure — queue position, adverse
-selection, market-maker P&L, optimal execution — can only be studied with a
-realistic simulation. Off-the-shelf LOB packages are either toys (no real
-matching) or proprietary trading-firm internals. `lobster` is a clean,
-hackable middle ground.
-
-## Features
-
-- **Price-time priority** matching engine with limit, market, partial-fill
-  and cancel semantics
-- **Latency models**: constant + jittered (gamma) network/processing delays
-- **Market-impact models**: linear and Almgren–Chriss-style square-root
-- **Pluggable agents**: `NoiseAgent`, `MarketMakerAgent` (inventory-skewed,
-  with cancel/replace), `MomentumAgent` (responds to tape imbalance)
-- **LOBSTER message replay**: reconstruct the book from real NASDAQ-style
-  `add / cancel / delete / execute` message streams (`replay_csv`)
-- **Analytics**: spread, depth, queue position, agent P&L, and an
-  **adverse-selection markout** metric
-- **Deterministic** under a given seed — reproducible simulations
-- **Fast**: ~485k inserts/s, ~357k matches/s, ~656k replayed msg/s
-  (pure Python; see `benchmarks/throughput.py`)
+Every horizontal band is a resting queue; colour is the size waiting in it.
+The best bid and ask thread through the middle and the triangles are prints,
+buyer-initiated above, seller-initiated below. Notice that the price does
+not glide — it sits inside a corridor of depth until something eats through
+a level, and between ticks 1000 and 1150 the bid queues stop being replaced
+and the whole structure steps down four points. That is what a limit order
+book looks like from the inside. Reproduce with
+`python examples/make_figures.py depth`.
 
 ## Install
 
@@ -58,79 +33,308 @@ hackable middle ground.
 pip install -e ".[dev]"
 ```
 
-## Quickstart
+Runtime dependencies: none. `matplotlib` (the `plot` extra) is only needed
+to regenerate the figures.
 
-```sh
-python examples/basic_book.py
-python examples/market_maker_demo.py
+## Thirty seconds
+
+```python
+from lobster import OrderBook, Order, Side, OrderType, match
+
+book = OrderBook()
+book.add(Order(Side.BUY, qty=100, price=99.5))
+book.add(Order(Side.SELL, qty=50, price=100.5))
+
+trades = match(book, Order(Side.BUY, qty=30, type=OrderType.MARKET))
+print(trades[0].price)   # 100.5
+print(book.spread)       # 1.0
 ```
 
-## Math
+Two rules the API enforces so you cannot get them wrong later. `book.add()`
+refuses an order that would cross the opposite side — a silently crossed
+book poisons every statistic downstream — so marketable orders go through
+`match()`. And `match()` leaves the unfilled remainder on the taker, so
+`taker.qty > 0` after a market order means the book ran out.
 
-The book exposes `mid`, `spread`, and `depth(side, k)` directly. Trade
-arrivals are recorded on a `Tape`; the matching engine emits trades
-price-time-priority. Market impact for an order of size $Q$ traded against a
-liquidity parameter $\eta$ is modeled as:
+## Running a market
 
-- **Linear**: $\Delta p = \eta \cdot Q$
-- **Square-root**: $\Delta p = \eta \cdot \sqrt{Q / V}$, where $V$ is
-  the recent traded volume (Almgren-Chriss style).
+```sh
+python examples/basic_book.py           # the data structure, printed
+python examples/market_maker_demo.py    # four agents, P&L attribution
+python examples/latency_race.py         # two makers, different wires
+python examples/scorecard.py            # is the output realistic?
+python examples/validate.py             # does it agree with the literature?
+python examples/execution_costs.py      # what the book charges a portfolio
+```
 
-The market-maker quotes around mid with a width that increases linearly in
-inventory imbalance to avoid runaway position.
+`market_maker_demo.py --steps 5000 --seed 7`:
 
-## Layout
+```
+Trades:        1524
+Spread mean:   0.3554
+Spread p95:    0.6600
+Agent P&L:
+  agent 1 (   noise): cash=-23789.25  inv= +249  mtm=  -881.25
+  agent 2 (   noise): cash=+14971.02  inv= -155  mtm=  +711.02
+  agent 3 (momentum): cash= +9232.01  inv= -100  mtm=   +32.01
+  agent 4 (   maker): cash=  -413.78  inv=   +6  mtm=  +138.22
+```
+
+The maker ends near flat and slightly up: it earned the spread and paid for
+it in inventory risk. Quantify the second half of that trade-off with
+`Analytics.markout(4, horizon=10)` — a negative value means the mid moves
+against its fills, which is the adverse selection the spread is charging
+for.
+
+## Does the output look like a market?
+
+This is the question that decides whether any of the above is worth
+believing, so the package measures it instead of asserting it.
+`lobster.stylized` computes four textbook microstructure diagnostics
+straight off a finished run, and `examples/scorecard.py` grades them.
+
+![stylized facts](docs/stylized_facts.png)
+
+```
+Stylized-facts scorecard — 100,000 ticks, seed 7
+
+demo mix  (29,882 trades)
+     yes  bid-ask bounce             rho1 = -0.370 against Roll's floor of -0.5
+     yes  humped depth profile       peak 0.43 from the mid; the touch holds 2.1% of peak size
+  partly  long memory of order flow  rho1 = +0.071, gone by lag 69, gamma = 0.94 (real flow: gamma ~ 0.5, never gone)
+      no  mid is a martingale        VR(100) = 10.57; 1.0 is a random walk
+
+no chaser  (27,612 trades)
+     yes  bid-ask bounce             rho1 = -0.461 against Roll's floor of -0.5
+     yes  humped depth profile       peak 0.43 from the mid; the touch holds 1.6% of peak size
+      no  long memory of order flow  rho1 = +0.005, inside the noise band from lag 1 (real flow: gamma ~ 0.5, never gone)
+  partly  mid is a martingale        VR(100) = 1.54; 1.0 is a random walk
+```
+
+Panel by panel:
+
+**(a) The bounce is right.** Consecutive trade prices alternate between bid
+and ask, so trade-price changes have autocorrelation -0.370 against Roll's
+theoretical floor of -1/2. Feed the same covariance into Roll's
+implied-spread estimator and it returns 0.4230; the book's actual mean
+spread at the ticks where trades printed was 0.4505. The estimator recovers
+the spread that was paid, from trade prices alone. `scorecard.py` prints
+both.
+
+**(b) Order-flow memory is present but too short-lived.** Trade signs stay
+positively autocorrelated out to lag 69, then fall into the noise band. They
+sit at about half the empirical reference level for the first few lags,
+cross it around lag 10 and stay within about 50% of it out to lag 50. Real
+order flow stays positive for thousands of trades because institutions split
+parent orders. The only thing creating memory here is one momentum agent
+with a 20-trade window, so the memory dies when its window does.
+
+**(c) The mid is not a martingale, and the ablation says why.** With the
+chaser in the mix VR(100) = 10.6 — badly super-diffusive. Take it out and it
+falls to 1.54. Nothing in the agent set trades *against* a trend, so
+momentum compounds unopposed.
+
+**(d) The depth profile is humped**, peaking 0.43 from the mid while the
+mean half-spread is only 0.18; the innermost bin holds about 2% of the
+peak's size. Both agent mixes give the same curve, which is the tell — the
+hump's location is set by the quoting kernel, not by adverse selection. The
+right shape, arguably for the wrong reason.
+
+Two of four. That makes this a useful simulator for queue-position and
+liquidity-provision questions, and the wrong tool for anything that depends
+on a realistic price process.
+
+## Does it agree with anything outside itself?
+
+The scorecard grades the simulator against four facts it measures itself.
+[`docs/validation.md`](docs/validation.md) is the harder version of the same
+question: every number in it comes from a process whose answer was fixed
+before this library saw it — a closed-form identity, or a magnitude somebody
+else published. `examples/validate.py` produces the lot in about twenty
+seconds and the doc pastes the output verbatim.
+
+The estimators are checked first, because a bent ruler makes everything
+downstream meaningless.
+
+![impact](docs/impact_law.png)
+
+| check | ours | reference |
+|---|---|---|
+| Roll's implied spread on a process built with a spread of 0.10 | 0.09987 | 0.10000 |
+| sampling s.d. of VR(2) over 1,500 random walks | 0.0224 | 0.0224 (Lo–MacKinlay) |
+| book-walk exponent on a book built to have a square-root law | 0.5038 | 0.5000 |
+| `SquareRootImpact`: impact(4Q)/impact(Q) | 2.000000000000 | 2 |
+
+Then the simulator itself, against the literature. It gets the bid-ask
+bounce, the humped depth profile, adverse selection, heavy tails and — for
+the right reason or not — volatility clustering. It misses on order-flow
+memory (exponent 0.94 against a published ~0.5, and gone by lag 69 rather
+than lasting thousands of trades), on the mid being a martingale, and most
+interestingly on impact: a metaorder here costs a **convex** function of its
+size, exponent 1.2 to 1.5, where published estimates are concave at 0.5 to
+0.6. Panel (b) above is that gap, and panel (a) is the evidence that the gap
+is the model's and not the measurement's. `validation.md` explains what is
+missing — liquidity that regenerates in response to being consumed — and
+does not pretend the difference is small.
+
+## Where this sits
+
+This is the microstructure end of a small stack. `portopt` decides what to
+hold (Markowitz, Black–Litterman, risk parity); `risk` decides how badly
+that can go (VaR, expected shortfall, stress scenarios). Neither knows what
+it costs to get from the book you have to the one they asked for, and the
+usual stand-in — a flat number of basis points — has no shape, so it can
+never tell you to trade part of the way.
+
+`examples/execution_costs.py` is the join. It calibrates `cost = k *
+participation^delta` off simulated metaorders, then hands that curve to a
+three-asset mean-variance problem inlined in the same file (nothing is
+imported from the sibling repos; the upstream inputs are written out):
+
+```
+  cost per share = 10.791 * participation^1.75, fitted over 19%-65% participation
+
+    fraction moved   utility gain      cost        net
+                0%        0.0000%   0.0000%    0.0000%
+               20%        0.0193%   0.0027%    0.0166%
+               40%        0.0342%   0.0181%    0.0161%
+               60%        0.0449%   0.0553%   -0.0103%
+               80%        0.0514%   0.1220%   -0.0707%
+              100%        0.0535%   0.2255%   -0.1720%
+
+  best move: 30% of the way to target, net +0.0191% of NAV against +0.0535% if trading were free
+```
+
+The optimiser wanted the whole move; at this fund size the whole move
+destroys value. Where the line stops is a number you can only get from a
+model of the book.
+
+## Latency buys queue position
+
+Two market makers quote identical prices off the same mid. The only
+difference is the wire: constant 0.05 against 0.15 time units of submission
+delay. Price-time priority does the rest.
+
+![latency race](docs/latency_race.png)
+
+`latency_race.py --steps 4000 --seed 11`:
+
+```
+Latency race — identical makers, fast delay=0.05 vs slow delay=0.15
+steps=4000  seed=11  trades=1706
+  fast maker: front-of-queue share=72.7%  passive fill volume=  2872  markout(h=10)=-0.00019
+  slow maker: front-of-queue share=27.3%  passive fill volume=   698  markout(h=10)=-0.00422
+```
+
+Three times the speed holds the front of the queue 73% of the time and
+captures four times the passive volume — but the third panel is the real
+result. The slow maker's markout is twenty times worse. It fills mostly once
+the queue ahead of it has already been consumed, which is exactly when being
+filled is bad news. Speed does not just buy more volume, it buys better
+volume.
+
+`ConstantLatency(0)` is bit-identical to running with no latency model at
+all (there is a test for it), so the event queue is a strict superset of the
+synchronous loop rather than a replacement for it.
+
+## Replaying real data
+
+```python
+from lobster import OrderBook, ReplayStats, replay_csv
+
+# Seed the opening book from the companion orderbook file's first row...
+book = OrderBook.from_snapshot(bids=[(99.4, 200)], asks=[(100.6, 150)])
+stats = ReplayStats()
+book = replay_csv("data/sample_messages.csv", price_scale=1e-4,
+                  book=book, stats=stats)
+print(book.snapshot(levels=2))
+print(f"applied={stats.applied} unknown={stats.unknown_total} clean={stats.clean}")
+```
+
+```
+{'bids': [(99.5, 60), (99.4, 200)], 'asks': [(100.0, 80), (100.5, 20)], 'mid': 99.75, 'spread': 0.5, 'microprice': 99.71428571428571}
+applied=7 unknown=0 clean=True
+```
+
+Real LOBSTER message files reference orders that were already resting when
+the capture window opened. A cold-start replay cannot match those ids, and
+the honest thing is to say so rather than to drop them: they land in
+`stats.unknown_*`, `stats.clean` tells you whether the reconstruction is
+faithful, and `strict=True` raises on the first one. Seed the book with
+`OrderBook.from_snapshot` and the counters go to zero.
+
+## What's in the box
 
 ```
 lobster/
-├── order.py       # Side, OrderType, Order
-├── book.py        # PriceLevel, OrderBook
-├── matching.py    # match() — price-time priority engine
+├── order.py       # Side, OrderType, Order (with optional ttl)
+├── book.py        # PriceLevel, OrderBook (+ from_snapshot)
+├── matching.py    # match() — price-time priority engine + STP policies
 ├── tape.py        # Trade dataclass + Tape buffer
-├── latency.py     # ConstantLatency, JitteredLatency
-├── impact.py      # LinearImpact, SquareRootImpact
-├── agents/        # Agent base + Noise/MM/Momentum
-├── sim.py         # Simulation event loop
-└── analytics.py   # Spread/depth/queue-position/P&L
+├── latency.py     # ConstantLatency, JitteredLatency (gamma)
+├── impact.py      # LinearImpact, SquareRootImpact — pre-trade estimators
+├── agents/        # latency-aware Agent base + Noise / MarketMaker / Momentum
+├── sim.py         # event-driven arrivals, self-trade prevention, TTL expiry
+├── replay.py      # LOBSTER message replay + ReplayStats
+├── analytics.py   # spread, depth, queue position, P&L, markout, wash fraction
+├── stylized.py    # bounce, flow memory, variance ratios, return distribution
+└── execution.py   # read-only book walk, metaorder shortfall, power-law fit
 ```
 
-## Design
+Two pieces of exchange hygiene are on by default, because leaving them off
+quietly corrupts everything else. `Simulation(stp="cancel_resting")` cancels
+an agent's own resting quote instead of printing a wash trade — without it a
+majority of the tape used to be agents trading with themselves, and that is
+exactly the tape `MomentumAgent` and `markout` read. `Order.ttl` expires
+stale passive quotes, so a long run no longer ends with an unboundedly thick
+book. `Analytics.wash_trade_fraction()` audits the first; under the default
+policy it is 0 by construction.
 
-See [`docs/design.md`](docs/design.md) for modeling assumptions, invariants,
-and known limitations.
+Throughput in pure CPython is a few hundred thousand operations per second
+on one core for all three hot paths — resting a limit order, crossing a
+marketable one, replaying a message. The exact figures move by more than
+half between machines and between runs, so rather than quote mine, run
+`python benchmarks/throughput.py` and read yours.
 
-## Example output
+## Reading further
 
-Running `examples/market_maker_demo.py --steps 5000 --seed 7`:
-
-```
-Trades:        5068
-Spread mean:   0.2789
-Spread p95:    0.6500
-Agent P&L:
-  agent 1 (   noise): cash=-207580.76  inv=+2114  mtm= -1465.76
-  agent 2 (   noise): cash=-159881.92  inv=+1638  mtm=  -176.92
-  agent 3 (momentum): cash=+366517.41  inv=-3751  mtm=  +794.91
-  agent 4 (   maker): cash=  +945.27  inv=   -1  mtm=  +847.77
-```
-
-The market maker holds a flat inventory (≈0) and books a steady profit; with
-cancel/replace the spread now stays tight (mean ≈ 0.28 vs ≈ 1.43 before).
-Quantify the maker's adverse selection with `Analytics.markout(4, horizon=10)`
-(negative = the price moves against its fills — the risk the spread pays for).
-
-See [`examples/walkthrough.ipynb`](examples/walkthrough.ipynb) for an
-end-to-end notebook (build → simulate → plot → analyze → replay real data).
+- [`docs/theory.md`](docs/theory.md) — the derivations. Queue position and
+  fill probability, why latency buys time priority, Roll's bounce and the
+  implied-spread estimator, variance ratios, why order-flow memory is a
+  consequence of order splitting, Glosten–Milgrom and markout, and why
+  linear impact is not the square-root law.
+- [`docs/validation.md`](docs/validation.md) — the ledger. What the
+  estimators recover from processes with known answers, what the simulator
+  reproduces of the published stylized facts, and the four things it gets
+  wrong with the reason for each.
+- [`docs/design.md`](docs/design.md) — modelling assumptions, invariants,
+  numerics, replay fidelity.
+- [`examples/walkthrough.ipynb`](examples/walkthrough.ipynb) — build,
+  simulate, plot, analyse, replay, end to end.
 
 ## Known limitations
 
-- Latency model is applied per-agent but the matching engine itself is
-  synchronous (no queue arbitration at sub-tick resolution).
-- Replay reconstructs the *visible* book only; LOBSTER hidden-order executions
-  (type 5) are intentionally skipped.
-- Greeks/risk are intentionally out of scope — see `optune` for those.
+- **No informed traders and no parent orders.** Both show up directly in the
+  scorecard above: nothing anchors the price, and order-flow memory dies
+  with the momentum agent's lookback.
+- **No tick size.** Prices are floats rounded to two decimals at agent
+  boundaries. Queue dynamics at the touch depend heavily on the tick in real
+  venues.
+- **Only submissions pay latency.** Cancels are instantaneous, so the
+  cancel-race — pulling a stale quote before it is picked off — is not
+  modelled, which flatters fast agents.
+- **Replay reconstructs the visible book only.** Hidden-order executions
+  (LOBSTER type 5) and auction crosses are skipped by design, and snapshot
+  seeding fixes opening depth without giving pre-window orders individual
+  ids.
+- **Impact curves the wrong way.** Metaorder cost here is convex in size
+  (fitted exponent 1.2 to 1.5) where published estimates are concave (0.5 to
+  0.6). Nothing in the agent set replenishes liquidity in response to it
+  being consumed, which is the mechanism usually credited for the
+  concavity. See [`docs/validation.md`](docs/validation.md) §1.
+- **One symbol per `Simulation`**, greedy partial fills, no pro-rata
+  allocation, no fees.
 
 ## License
-
 
 MIT — see [LICENSE](LICENSE).

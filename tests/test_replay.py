@@ -89,3 +89,61 @@ def test_replay_list_matches_csv():
     book = replay(msgs)
     assert book.depth(Side.BUY)[0] == (99.5, 60)
     assert book.best_ask == 100.5
+
+
+# ---- unknown-order-id accounting (cold-start replays of real files) ----------
+
+
+def test_unknown_execution_is_counted_not_silently_dropped():
+    """Executions against pre-window orders must be surfaced via stats."""
+    from lobster.replay import ReplayStats
+
+    book = OrderBook()
+    stats = ReplayStats()
+    # Execution for an order id the book has never seen (rested pre-window).
+    apply_message(book, Message(1.0, 4, 777, 30, 100.5, -1), stats=stats)
+    assert stats.unknown_execs == 1
+    assert stats.unknown_total == 1
+    assert not stats.clean
+
+
+def test_unknown_cancel_and_delete_are_counted():
+    from lobster.replay import ReplayStats
+
+    book = OrderBook()
+    stats = ReplayStats()
+    apply_message(book, Message(1.0, 2, 888, 10, 99.5, 1), stats=stats)   # cancel
+    apply_message(book, Message(2.0, 3, 999, 10, 99.0, 1), stats=stats)   # delete
+    assert stats.unknown_cancels == 1
+    assert stats.unknown_deletes == 1
+    assert stats.unknown_total == 2
+
+
+def test_strict_mode_raises_on_unknown_order():
+    from lobster.replay import UnknownOrderError
+
+    book = OrderBook()
+    with pytest.raises(UnknownOrderError):
+        apply_message(book, Message(1.0, 4, 777, 30, 100.5, -1), strict=True)
+
+
+def test_clean_replay_reports_all_applied():
+    from lobster.replay import ReplayStats
+
+    stats = ReplayStats()
+    replay_csv(str(SAMPLE), price_scale=1e-4, stats=stats)
+    assert stats.clean
+    assert stats.applied == 7
+    assert stats.unknown_total == 0
+
+
+def test_stats_track_skipped_event_types():
+    from lobster.replay import ReplayStats
+
+    book = OrderBook()
+    stats = ReplayStats()
+    apply_message(book, Message(0.0, 1, 1, 100, 99.5, 1), stats=stats)
+    apply_message(book, Message(1.0, 5, 42, 10, 99.5, 1), stats=stats)  # hidden
+    apply_message(book, Message(2.0, 7, 0, 0, 0.0, -1), stats=stats)    # halt
+    assert stats.skipped_types == {5: 1, 7: 1}
+    assert stats.applied == 1

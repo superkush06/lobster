@@ -1,4 +1,10 @@
-"""Market impact models — estimates of permanent + temporary price change."""
+"""Market impact models — estimates of permanent + temporary price change.
+
+These are standalone estimators for pre-trade analysis (e.g. sizing a
+parent order); the matching engine itself never applies them — price
+impact in the simulator is *emergent* from orders eating through the
+book's depth.
+"""
 
 from __future__ import annotations
 
@@ -29,10 +35,14 @@ class LinearImpact(ImpactModel):
 
 
 class SquareRootImpact(ImpactModel):
-    """Almgren–Chriss-style sqrt model: `eta * sqrt(Q / V)`.
+    """Empirical square-root law: `eta * sqrt(Q / V)`.
 
-    Empirically observed to fit equities well: doubling trade size only
-    increases impact by √2, not 2.
+    Doubling trade size only increases impact by √2, not 2 — a remarkably
+    stable empirical regularity across asset classes (see e.g. Gatheral
+    2010, "No-dynamic-arbitrage and market impact"). Note this is *not*
+    Almgren–Chriss: their 2001 optimal-execution model uses impact that is
+    linear in the trading rate. In full-strength versions eta carries a
+    volatility scale (sigma * sqrt(Q/V)); here it is a free parameter.
     """
 
     def __init__(self, eta: float = 0.1, daily_volume: float = 1e6) -> None:

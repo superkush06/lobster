@@ -1,0 +1,337 @@
+# lobster — the reasoning behind the code
+
+`design.md` says what the simulator does. This says why it is worth doing
+that way, and what the numbers it prints actually mean. Every figure quoted
+below comes from a run you can reproduce: `examples/scorecard.py` prints the
+stylized-facts verdicts *and* the spread block — the lag-1 autocovariance of
+trade-price changes, Roll's implied spread, the time-averaged and
+at-the-trade quoted spreads, and the variance ratios — and
+`examples/make_figures.py` draws the plots. `validation.md` is the separate
+question of whether any of it matches published measurements, and
+`examples/validate.py` produces those numbers.
+
+---
+
+## 1. The queue is the model
+
+A limit order book is not a price. It is two priority queues, and almost
+everything interesting about electronic markets follows from how you get to
+the front of one.
+
+Under price-time priority a resting order is served after every order at a
+better price, and after every order at the same price that arrived earlier.
+So an order's fate is determined by one number: the volume resting ahead of
+it at its own level, $Q_{\text{ahead}}$. If aggressive volume arrives and
+the queue in front is never cancelled, the order fills once cumulative
+incoming volume exceeds $Q_{\text{ahead}}$. Cancellations ahead help you;
+new arrivals behind you do not.
+
+This is why the book here stores a `deque` of individual `Order` objects per
+`PriceLevel` rather than a single aggregated size. Aggregate depth is enough
+to compute a mid, a spread or an imbalance; it is not enough to answer *will
+my order fill*, which is the question the package exists for.
+`Analytics.queue_position` is the corresponding one-liner, and the
+alternative — reconstructing queue position from L2 depth snapshots — is a
+well-known source of quiet error in backtests.
+
+Two consequences shape the rest of the design:
+
+- **Matching must be the only path to a fill.** `OrderBook.add()` rejects an
+  order that crosses the opposite side, because a book that is allowed to
+  cross has a negative spread and a meaningless mid, and every statistic
+  downstream inherits the nonsense. Marketable orders go through `match()`.
+- **Trades must carry identity.** A `Trade` records `buyer_id` and
+  `seller_id` (agent, not order) so P&L, markout and self-trade detection
+  are all computable from the tape alone.
+
+---
+
+## 2. Latency is what makes queue position a question
+
+Consider two market makers reacting to the same event at time $t$, both
+wanting to quote at the same price. Maker A's order reaches the engine at
+$t + \delta_A$, maker B's at $t + \delta_B$. If $\delta_A < \delta_B$ then A
+is inserted into the FIFO queue first, at every level, on every re-quote —
+and stays in front until it fills or cancels. Latency does not buy a better
+price; it buys a place in line, and the value of that place is the whole
+economics of passive trading.
+
+A synchronous loop — every agent acts once per tick, in shuffled order —
+cannot express this. Whoever the shuffle happens to pick goes first, so
+"who re-quotes faster" is not a variable of the model. That is why
+`Simulation` keeps a `heapq` of arrival events keyed on
+$t + \texttt{latency.sample(rng)}$ and drains it in timestamp order.
+Agents with no latency model submit instantly, which reproduces the old
+synchronous behaviour exactly; `ConstantLatency(0)` consumes no randomness
+and is bit-identical to it.
+
+`examples/latency_race.py` puts two identical makers on different wires
+(constant 0.05 and 0.15 time units) and measures three things over 4,000
+ticks:
+
+| | front-of-queue share | passive volume | markout $h{=}10$ |
+|---|---|---|---|
+| fast (0.05) | 72.7% | 2,872 | $-0.00019$ |
+| slow (0.15) | 27.3% | 698 | $-0.00422$ |
+
+Three times the speed buys roughly four times the passive volume and an
+order of magnitude less adverse selection. The last column is the subtle
+one and is explained in §7: the slow maker fills mostly when the fast maker
+*declines* to be at the front, which is exactly when being there is a bad
+idea.
+
+---
+
+## 3. Roll (1984): what the bounce tells you
+
+Write the observed transaction price as an efficient price plus a
+half-spread paid to whoever provided liquidity:
+
+$$p_t = m_t + c\,q_t, \qquad q_t = \pm 1 \ \text{iid}, \qquad c = s/2,$$
+
+with $m_t$ a random walk of per-trade variance $\sigma^2$, independent of
+the trade signs. Then
+
+$$\Delta p_t = \Delta m_t + c\,(q_t - q_{t-1}),$$
+$$\operatorname{Var}(\Delta p) = \sigma^2 + 2c^2, \qquad
+\operatorname{Cov}(\Delta p_t, \Delta p_{t-1}) = -c^2,$$
+
+and all higher-order autocovariances vanish. Two things fall out.
+
+**The spread is observable from trade prices alone.** The first
+autocovariance does not depend on $\sigma^2$ at all, so
+$\hat{s} = 2\sqrt{-\gamma_1}$ estimates the spread even when you never saw a
+quote. On the demo mix over 100,000 ticks, $\gamma_1 = -0.044735$, giving
+$\hat{s} = 0.4230$. The book's own time-averaged quoted spread over the same
+run is $0.3624$ — but the mean spread *at the ticks where a trade printed*
+is $0.4505$. Roll's estimator is not measuring the average quote; it is
+measuring the spread actually paid, and it lands between the two, much
+closer to the one it is supposed to recover. Crossing flow arrives
+preferentially when the book is wide.
+
+**The autocorrelation is bounded.**
+
+$$\rho_1 = \frac{-c^2}{\sigma^2 + 2c^2} \in [-\tfrac12, 0],$$
+
+reaching $-1/2$ only when the efficient price does not move between trades.
+Measured: $-0.461$ with only noise traders and a market maker, $-0.370$ once
+the momentum agent is added. The gap is informative — inverting the formula,
+the second case has $\sigma \approx 0.42\,s$ of genuine price innovation per
+trade against $0.21\,s$ for the first. The chaser is not just adding noise;
+it is moving the efficient price.
+
+None of this is a property of a simulator. It is why a trade-price series
+sampled tick-by-tick is a terrible estimate of volatility, and why
+microstructure work almost always uses mid prices.
+
+---
+
+## 4. Variance ratios: mean reversion at one horizon, trends at another
+
+$$VR(q) = \frac{\operatorname{Var}(p_t - p_{t-q})}{q \operatorname{Var}(p_t - p_{t-1})}
+        = 1 + 2\sum_{k=1}^{q-1}\Big(1 - \frac{k}{q}\Big)\rho_k .$$
+
+A random walk gives $VR \equiv 1$. Below 1 means mean reversion, above 1
+means trending, and the identity says the whole curve is just a weighted
+sum of autocorrelations — so §3 already determines its left end. With
+$\rho_1 = -0.370$ and $\rho_{k>1} \approx 0$, the model predicts
+$VR(2) = 1 + \rho_1 = 0.630$; the measured value is $0.63$.
+
+The full curves say something the single number cannot:
+
+- **Trade prices** start at $0.63$, bottom out near $0.48$ around $q = 5$,
+  then climb back through 1 somewhere between $q = 20$ and $q = 50$. Bounce
+  dominates at short horizons; the underlying drift takes over at long ones.
+- **Mid prices** never mean-revert — there is no bounce in a mid — but with
+  the momentum agent in the mix they super-diffuse badly: $VR(100) = 10.6$.
+  Remove the chaser and it falls to $1.54$.
+
+$VR(100) = 10.6$ is a failing grade, and it is worth being blunt about why.
+The chaser reads imbalance off the tape and then prints on the same tape;
+nothing in the agent set pushes back. Real markets have that pushback —
+statistical arbitrageurs, informed traders with a level in mind, hedgers
+selling into strength — and this one does not. See §10.
+
+---
+
+## 5. Long memory of order flow
+
+The sequence of trade signs is one of the most robustly autocorrelated
+series in finance: $\rho(\ell) \sim \ell^{-\gamma}$ with $\gamma \approx
+0.5$, positive out to thousands of trades, on every liquid instrument
+anyone has looked at. $\gamma < 1$ makes the sum $\sum_\ell \rho(\ell)$
+divergent — the textbook definition of long memory.
+
+The mechanism is not herding. It is **order splitting**: a fund with a
+million shares to buy does not send a million-share order, it sends
+thousands of small ones over hours, all with the same sign. Lillo, Mike and
+Farmer showed that if parent-order sizes follow a power law with exponent
+$\alpha$, the resulting sign autocorrelation inherits $\gamma = \alpha - 1$.
+Long memory in the tape is the shadow of a heavy-tailed distribution of
+trading intentions.
+
+`lobster` reproduces the sign, not the shape. With the momentum agent the
+sign autocorrelation starts at $+0.071$ — about half the $0.15\,\ell^{-1/2}$
+reference the plot draws — crosses that reference near lag 10, stays within
+about 50% of it out to lag 50, and then drops into the noise band and stops,
+at lag 69. Fitted over the positive lags the decay exponent is $0.94$
+against the $\gamma \approx 0.5$ of real flow. Remove the chaser and there
+is no memory at all: signs are coin flips from lag 1.
+
+That is the correct diagnosis of a modelling gap. Memory here comes from one
+agent with a 20-trade window, so it necessarily dies at a horizon set by
+that window. Getting the real thing requires an agent with a *parent order*
+— a target quantity drawn from a heavy-tailed distribution, worked in child
+slices over many ticks. That is the single highest-value agent this package
+does not have.
+
+---
+
+## 6. The shape of the book
+
+Average resting size is not largest at the touch. It rises with distance
+from the mid, peaks a few ticks out, and decays — a shape Bouchaud, Mézard
+and Potters derived and measured in 2002. The intuition is adverse
+selection: sitting at the touch is where you get run over, so liquidity
+providers post size where the price has to travel to reach them.
+
+The measured profile is humped, peaking $0.43$ away from the mid while the
+mean half-spread is only $0.18$; the innermost bin holds about 2% of the
+peak's size. But be careful what that buys. Here the hump's *location* is
+set by `NoiseAgent(spread_offset=0.6)` sampling a uniform offset and
+`MarketMakerAgent(half_spread=0.4)` posting at a fixed distance — it is a
+property of the quoting kernel, not an emergent response to adverse
+selection. Change those parameters and the peak moves with them. The right
+shape for the wrong reason is still worth knowing; it is not worth
+overselling.
+
+---
+
+## 7. Adverse selection and markout
+
+Glosten and Milgrom: a market maker quoting to an anonymous flow that
+contains some informed traders loses to the informed and must charge
+everyone else for it. The spread is not a fee, it is compensation.
+
+The empirical handle is the **markout**. For each fill, take the signed mid
+move over the next $h$ observations:
+
+$$\text{markout}(h) = \frac{1}{N}\sum_{i} \epsilon_i\,(m_{t_i + h} - m_{t_i}),
+\qquad \epsilon_i = +1 \text{ if the agent bought}.$$
+
+Negative means the price systematically moves against the maker right after
+it trades — it is being picked off. `Analytics.markout` defaults to
+`passive_only=True` because only the fills where the agent *provided*
+liquidity are the ones the spread is supposed to pay for; including its own
+aggressive trades measures a different thing entirely.
+
+Two details matter in implementation. Fills are anchored to the latest
+metrics row at or before the fill timestamp, so latency-delayed arrivals
+landing between ticks are still counted rather than silently dropped. And
+the horizon is in metric samples, not trades, so it is comparable across
+runs with different trade intensity.
+
+In the latency race the fast maker's markout is $-0.00019$ against the slow
+maker's $-0.00422$. The likely mechanism, and the one the standard story
+predicts: the fast maker holds the front of the queue in ordinary
+conditions and takes the benign flow, while the slow maker fills mainly
+once the queue ahead of it has been consumed — which is exactly when
+something large is walking the book.
+
+---
+
+## 8. Impact: linear is not the same as square-root
+
+Two impact estimators ship here, and they answer different questions.
+
+**Linear**, $\Delta p = \eta Q$. This is the form in Almgren–Chriss (2001),
+where temporary impact is linear in the *trading rate* and the resulting
+optimal-execution problem has a closed-form solution. Linearity is a
+modelling convenience that makes the mathematics tractable, not an empirical
+claim.
+
+**Square-root**, $\Delta p = \eta \sqrt{Q/V}$. This is an empirical
+regularity: the impact of a metaorder of size $Q$ against daily volume $V$
+scales as $\sqrt{Q/V}$, remarkably stably across markets, decades and asset
+classes. In full-strength form it carries a volatility scale,
+$\Delta p \approx Y \sigma \sqrt{Q/V}$ with $Y = O(1)$; here $\eta$ absorbs
+$Y\sigma$ and is left as a free parameter. Doubling size raises impact by
+$\sqrt2$, not 2 — which is why splitting a parent order across venues does
+not help nearly as much as a linear model suggests.
+
+Neither model is applied by the matching engine. Impact inside the simulator
+is *emergent*: a market order eats through resting depth and the touch moves
+because the levels it consumed are gone. These estimators are for pre-trade
+sizing, and keeping them out of the engine keeps the engine honest.
+
+The emergent impact is measurable, and it is worth knowing that it comes out
+*convex*. `lobster.execution` walks the book read-only (`cost_to_trade`) and
+works parent orders into a live run (`execute_metaorder`); fitting a power
+law to the resulting shortfall gives an exponent of 1.2 to 1.5, not 0.5. The
+machinery is not at fault — on a synthetic book whose depth grows linearly
+with distance, which implies a square-root law analytically, the same fit
+returns 0.504. What is missing is liquidity that regenerates in response to
+being consumed. `validation.md` §1 has the numbers and the argument.
+
+---
+
+## 9. What the microprice is, and what it is not
+
+`OrderBook.microprice` is the size-weighted mid: each side's price weighted
+by the *opposite* side's top-of-book size, so a heavy bid pulls the estimate
+toward the ask.
+
+$$p_{\text{micro}} = \frac{P_b V_a + P_a V_b}{V_a + V_b}.$$
+
+It is a useful one-line imbalance proxy and it is *not* Stoikov's
+micro-price. Stoikov (2018) constructs a Markov-chain estimator of
+$\lim_{t\to\infty}\mathbb{E}[m_{t}]$ precisely because the weighted mid is a
+biased predictor of the future mid — it over-reacts to imbalance when the
+spread is wide. Calling the weighted mid "the microprice" is a common
+mislabelling and it is worth not repeating.
+
+---
+
+## 10. What this simulator is not
+
+Stated plainly, because the scorecard makes it measurable:
+
+- **No informed traders.** No agent has a view on value, so there is nothing
+  to anchor the price and nothing for the market maker to actually be
+  adversely selected *by*. Markout here comes from momentum, not information.
+- **No parent orders.** Hence no real long memory (§5).
+- **No tick size.** Prices are floats rounded to two decimals at agent
+  boundaries. Real venues quantise to a tick, and queue dynamics at the
+  touch depend on it heavily.
+- **Cancels are instantaneous.** Only submissions pay latency, so the
+  cancel-race — pulling a stale quote before it is picked off — is not
+  modelled. This flatters fast agents.
+- **One symbol.** No cross-asset flow, no lead-lag.
+
+---
+
+## References
+
+- Roll — *A simple implicit measure of the effective bid–ask spread in an
+  efficient market* (1984)
+- Glosten, Milgrom — *Bid, ask and transaction prices in a specialist market
+  with heterogeneously informed traders* (1985)
+- Lo, MacKinlay — *Stock market prices do not follow random walks: evidence
+  from a simple specification test* (1988)
+- Cont — *Empirical properties of asset returns: stylized facts and
+  statistical issues* (2001)
+- Bouchaud, Mézard, Potters — *Statistical properties of stock order books*
+  (2002)
+- Bouchaud, Gefen, Potters, Wyart — *Fluctuations and response in financial
+  markets: the subtle nature of "random" price changes* (2004)
+- Lillo, Mike, Farmer — *Theory for long memory in supply and demand* (2005)
+- Almgren, Chriss — *Optimal execution of portfolio transactions* (2001)
+- Almgren, Thum, Hauptmann, Li — *Direct estimation of equity market impact*
+  (2005)
+- Gatheral — *No-dynamic-arbitrage and market impact* (2010)
+- Cont, Stoikov, Talreja — *A stochastic model for order book dynamics* (2010)
+- Stoikov — *The micro-price: a high-frequency estimator of future prices*
+  (2018)
+- Gould, Porter, Williams, McDonald, Fenn, Howison — *Limit order books*
+  (2013), a survey
+- Bouchaud, Bonart, Donier, Gould — *Trades, Quotes and Prices* (2018)

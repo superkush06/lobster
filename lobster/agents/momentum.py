@@ -11,14 +11,28 @@ class MomentumAgent(Agent):
 
     Imbalance = (buy-aggressor volume - sell-aggressor volume) / total volume
     over the last `lookback` trades. Trades market when |imbalance| > thresh.
+
+    `max_position` caps absolute inventory, like any real momentum desk:
+    the agent's own marketable flow prints on the tape and feeds back into
+    the very imbalance signal it chases, so an uncapped chaser on a clean
+    (self-trade-free) tape can push the price into a runaway trend.
     """
 
     def __init__(self, agent_id: int, lookback: int = 20,
-                 threshold: float = 0.4, qty: int = 5) -> None:
-        super().__init__(agent_id)
+                 threshold: float = 0.4, qty: int = 5,
+                 max_position: int | None = None, latency=None) -> None:
+        super().__init__(agent_id, latency=latency)
         self.lookback = lookback
         self.threshold = threshold
         self.qty = qty
+        self.max_position = max_position
+
+    def _allowed(self, side: Side) -> bool:
+        if self.max_position is None:
+            return True
+        if side is Side.BUY:
+            return self.inventory + self.qty <= self.max_position
+        return self.inventory - self.qty >= -self.max_position
 
     def step(self, ctx: AgentContext) -> list[Order]:
         recent = ctx.tape.recent(self.lookback)
@@ -30,10 +44,12 @@ class MomentumAgent(Agent):
         if total == 0:
             return []
         imbalance = (buy_vol - sell_vol) / total
-        if imbalance > self.threshold and ctx.book.best_ask is not None:
+        if (imbalance > self.threshold and ctx.book.best_ask is not None
+                and self._allowed(Side.BUY)):
             return [Order(side=Side.BUY, qty=self.qty, type=OrderType.MARKET,
                           agent_id=self.id, ts=ctx.ts)]
-        if imbalance < -self.threshold and ctx.book.best_bid is not None:
+        if (imbalance < -self.threshold and ctx.book.best_bid is not None
+                and self._allowed(Side.SELL)):
             return [Order(side=Side.SELL, qty=self.qty, type=OrderType.MARKET,
                           agent_id=self.id, ts=ctx.ts)]
         return []

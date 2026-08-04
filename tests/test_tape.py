@@ -36,3 +36,23 @@ def test_bounded_buffer():
         tape.record(_t(100.0 + p, 1))
     assert len(tape) == 5
     assert list(tape)[0].price == 105.0  # oldest 5 dropped
+
+
+def test_default_tape_is_unbounded():
+    """Long runs (README demo already logs >5k trades in 5k steps) must not
+    silently window markout/imbalance: the default tape keeps everything."""
+    tape = Tape()
+    for i in range(12_000):
+        tape.record(_t(100.0, 1, ts=float(i)))
+    assert len(tape) == 12_000
+    assert not tape.truncated
+    assert tape.evicted == 0
+
+
+def test_bounded_tape_reports_truncation():
+    tape = Tape(maxlen=5)
+    for i in range(8):
+        tape.record(_t(100.0 + i, 1))
+    assert len(tape) == 5
+    assert tape.truncated
+    assert tape.evicted == 3
