@@ -4,37 +4,41 @@
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A limit order book is a queue, and the only way to the front of one is to be
-early.
+`lobster` is a limit order book simulator: a price-time-priority matching
+engine, agents that quote and take, and a wire between them that has
+latency. It is about 1,900 lines of dependency-free Python and 2,500 lines
+of tests (173 of them).
 
-`lobster` is a matching engine and an agent simulator built around that
-sentence. Orders reach the book over a wire that has latency, price-time
-priority decides who fills, and everything the package reports — queue
-position, adverse selection, market-maker P&L — is measured off the tape
-those races produce. It is about 1,900 lines of dependency-free Python
-backed by rather more than that in tests, and it will tell you — with
-numbers, against the literature — when its own output has stopped looking
-like a real market.
+The hard part is not the data structure. Orders arrive in a different order
+than they were sent, a marketable order must never rest and cross the book,
+agents can trade with themselves and inflate the tape, and every number you
+care about — queue position, adverse selection, market-maker P&L — is
+measured off that tape. This package handles those cases and then measures
+its own output against published microstructure facts, so you can see where
+it stops looking like a real market.
 
 ![the book through time](docs/book_depth.png)
 
-Every horizontal band is a resting queue; colour is the size waiting in it.
-The best bid and ask thread through the middle and the triangles are prints,
-buyer-initiated above, seller-initiated below. Notice that the price does
-not glide — it sits inside a corridor of depth until something eats through
-a level, and between ticks 1000 and 1150 the bid queues stop being replaced
-and the whole structure steps down four points. That is what a limit order
-book looks like from the inside. Reproduce with
+Each horizontal band is a resting queue; colour is the size waiting in it.
+The two lines are the best bid and ask, and the triangles are prints —
+buyer-initiated above, seller-initiated below. The price does not glide: it
+sits inside a corridor of depth until something eats through a level.
+Between ticks 1000 and 1150 the bid queues stop being replaced and the whole
+structure steps down four points. Regenerate with
 `python examples/make_figures.py depth`.
 
 ## Install
 
 ```sh
-pip install -e ".[dev]"
+pip install -e ".[dev]"         # library + pytest + ruff
+pip install -e ".[dev,plot]"    # adds matplotlib, needed for the figures
 ```
 
-Runtime dependencies: none. `matplotlib` (the `plot` extra) is only needed
-to regenerate the figures.
+Runtime dependencies: none — the package imports only the standard library.
+`matplotlib` (the `plot` extra) is needed only by
+`examples/make_figures.py` and the notebook. Run every command below from
+the repository root; the examples read relative paths such as
+`data/sample_messages.csv`.
 
 ## Thirty seconds
 
@@ -50,11 +54,11 @@ print(trades[0].price)   # 100.5
 print(book.spread)       # 1.0
 ```
 
-Two rules the API enforces so you cannot get them wrong later. `book.add()`
-refuses an order that would cross the opposite side — a silently crossed
-book poisons every statistic downstream — so marketable orders go through
-`match()`. And `match()` leaves the unfilled remainder on the taker, so
-`taker.qty > 0` after a market order means the book ran out.
+The API enforces two rules. `book.add()` raises `ValueError` on an order
+that would cross the opposite side, because a silently crossed book corrupts
+every statistic downstream — marketable orders go through `match()`. And
+`match()` leaves the unfilled remainder on the taker, so `taker.qty > 0`
+after a market order means the book ran out of size.
 
 ## Running a market
 
@@ -67,7 +71,7 @@ python examples/validate.py             # does it agree with the literature?
 python examples/execution_costs.py      # what the book charges a portfolio
 ```
 
-`market_maker_demo.py --steps 5000 --seed 7`:
+`market_maker_demo.py --steps 5000 --seed 7` (those are also the defaults):
 
 ```
 Trades:        1524
@@ -80,18 +84,17 @@ Agent P&L:
   agent 4 (   maker): cash=  -413.78  inv=   +6  mtm=  +138.22
 ```
 
-The maker ends near flat and slightly up: it earned the spread and paid for
-it in inventory risk. Quantify the second half of that trade-off with
-`Analytics.markout(4, horizon=10)` — a negative value means the mid moves
-against its fills, which is the adverse selection the spread is charging
-for.
+The maker ends near flat (+6 inventory) and slightly up (+138.22
+mark-to-market): it earned the spread and paid for it in inventory risk.
+`Analytics.markout(4, horizon=10)` measures the second half of that
+trade-off. A negative markout means the mid moves against its fills, which
+is the adverse selection the spread is charging for.
 
 ## Does the output look like a market?
 
-This is the question that decides whether any of the above is worth
-believing, so the package measures it instead of asserting it.
-`lobster.stylized` computes four textbook microstructure diagnostics
-straight off a finished run, and `examples/scorecard.py` grades them.
+The package measures this rather than asserting it. `lobster.stylized`
+computes four textbook microstructure diagnostics from a finished run, and
+`examples/scorecard.py` grades them (about 13 seconds).
 
 ![stylized facts](docs/stylized_facts.png)
 
@@ -130,31 +133,31 @@ parent orders. The only thing creating memory here is one momentum agent
 with a 20-trade window, so the memory dies when its window does.
 
 **(c) The mid is not a martingale, and the ablation says why.** With the
-chaser in the mix VR(100) = 10.6 — badly super-diffusive. Take it out and it
-falls to 1.54. Nothing in the agent set trades *against* a trend, so
-momentum compounds unopposed.
+chaser in the mix VR(100) = 10.6, which is badly super-diffusive. Take it
+out and VR(100) falls to 1.54. Nothing in the agent set trades *against* a
+trend, so momentum compounds unopposed.
 
 **(d) The depth profile is humped**, peaking 0.43 from the mid while the
 mean half-spread is only 0.18; the innermost bin holds about 2% of the
-peak's size. Both agent mixes give the same curve, which is the tell — the
+peak's size. Both agent mixes give the same curve, and that is the tell: the
 hump's location is set by the quoting kernel, not by adverse selection. The
-right shape, arguably for the wrong reason.
+shape is right for the wrong reason.
 
-Two of four. That makes this a useful simulator for queue-position and
-liquidity-provision questions, and the wrong tool for anything that depends
-on a realistic price process.
+Two of four pass. Use this for queue-position and liquidity-provision
+questions. Do not use it for anything that depends on a realistic price
+process.
 
 ## Does it agree with anything outside itself?
 
 The scorecard grades the simulator against four facts it measures itself.
-[`docs/validation.md`](docs/validation.md) is the harder version of the same
-question: every number in it comes from a process whose answer was fixed
-before this library saw it — a closed-form identity, or a magnitude somebody
-else published. `examples/validate.py` produces the lot in about twenty
-seconds and the doc pastes the output verbatim.
+[`docs/validation.md`](docs/validation.md) is the harder test: every number
+in it has an answer that was fixed before this library saw it, either a
+closed-form identity or a magnitude somebody else published.
+`examples/validate.py` produces all of them in about 25 seconds, and the doc
+pastes that output verbatim.
 
-The estimators are checked first, because a bent ruler makes everything
-downstream meaningless.
+The estimators are checked first. If they are wrong, everything measured
+with them is wrong too.
 
 ![impact](docs/impact_law.png)
 
@@ -167,24 +170,24 @@ downstream meaningless.
 
 Then the simulator itself, against the literature. It gets the bid-ask
 bounce, the humped depth profile, adverse selection, heavy tails and — for
-the right reason or not — volatility clustering. It misses on order-flow
-memory (exponent 0.94 against a published ~0.5, and gone by lag 69 rather
-than lasting thousands of trades), on the mid being a martingale, and most
-interestingly on impact: a metaorder here costs a **convex** function of its
-size, exponent 1.2 to 1.5, where published estimates are concave at 0.5 to
-0.6. Panel (b) above is that gap, and panel (a) is the evidence that the gap
-is the model's and not the measurement's. `validation.md` explains what is
-missing — liquidity that regenerates in response to being consumed — and
-does not pretend the difference is small.
+the right reason or not — volatility clustering. It misses on three things.
+Order-flow memory decays with exponent 0.94 against a published ~0.5, and is
+gone by lag 69 instead of lasting thousands of trades. The mid is not a
+martingale. And a metaorder here costs a **convex** function of its size,
+fitted exponent 1.2 to 1.5, where published estimates are concave at 0.5 to
+0.6. Panel (b) above is that impact gap; panel (a) is the evidence that the
+gap belongs to the model and not to the measurement. `validation.md` names
+what is missing — liquidity that regenerates in response to being consumed —
+and does not pretend the difference is small.
 
 ## Where this sits
 
 This is the microstructure end of a small stack. `portopt` decides what to
 hold (Markowitz, Black–Litterman, risk parity); `risk` decides how badly
 that can go (VaR, expected shortfall, stress scenarios). Neither knows what
-it costs to get from the book you have to the one they asked for, and the
-usual stand-in — a flat number of basis points — has no shape, so it can
-never tell you to trade part of the way.
+it costs to get from the book you have to the one they asked for. The usual
+stand-in is a flat number of basis points, which is linear in size, so it
+can never tell you to trade only part of the way.
 
 `examples/execution_costs.py` is the join. It calibrates `cost = k *
 participation^delta` off simulated metaorders, then hands that curve to a
@@ -206,18 +209,18 @@ imported from the sibling repos; the upstream inputs are written out):
 ```
 
 The optimiser wanted the whole move; at this fund size the whole move
-destroys value. Where the line stops is a number you can only get from a
-model of the book.
+destroys value. The stopping point, 30%, comes from the cost curve, and you
+only get that curve from a model of the book.
 
 ## Latency buys queue position
 
 Two market makers quote identical prices off the same mid. The only
-difference is the wire: constant 0.05 against 0.15 time units of submission
-delay. Price-time priority does the rest.
+difference is the wire: a constant 0.05 against 0.15 time units of
+submission delay. Price-time priority does the rest.
 
 ![latency race](docs/latency_race.png)
 
-`latency_race.py --steps 4000 --seed 11`:
+`latency_race.py --steps 4000 --seed 11` (also the defaults):
 
 ```
 Latency race — identical makers, fast delay=0.05 vs slow delay=0.15
@@ -227,15 +230,15 @@ steps=4000  seed=11  trades=1706
 ```
 
 Three times the speed holds the front of the queue 73% of the time and
-captures four times the passive volume — but the third panel is the real
-result. The slow maker's markout is twenty times worse. It fills mostly once
+captures four times the passive volume. The third panel is the more
+interesting result: the slow maker's markout is -0.00422 against the fast
+maker's -0.00019, about twenty times worse. The slow maker mostly fills once
 the queue ahead of it has already been consumed, which is exactly when being
-filled is bad news. Speed does not just buy more volume, it buys better
-volume.
+filled is bad news. Speed buys better volume, not just more of it.
 
 `ConstantLatency(0)` is bit-identical to running with no latency model at
-all (there is a test for it), so the event queue is a strict superset of the
-synchronous loop rather than a replacement for it.
+all (`tests/test_event_queue.py` checks this), so the event queue is a
+strict superset of the synchronous loop rather than a replacement for it.
 
 ## Replaying real data
 
@@ -257,8 +260,8 @@ applied=7 unknown=0 clean=True
 ```
 
 Real LOBSTER message files reference orders that were already resting when
-the capture window opened. A cold-start replay cannot match those ids, and
-the honest thing is to say so rather than to drop them: they land in
+the capture window opened. A cold-start replay cannot match those ids, so it
+counts them instead of dropping them silently: they land in
 `stats.unknown_*`, `stats.clean` tells you whether the reconstruction is
 faithful, and `strict=True` raises on the first one. Seed the book with
 `OrderBook.from_snapshot` and the counters go to zero.
@@ -283,17 +286,17 @@ lobster/
 
 Two pieces of exchange hygiene are on by default, because leaving them off
 quietly corrupts everything else. `Simulation(stp="cancel_resting")` cancels
-an agent's own resting quote instead of printing a wash trade — without it a
-majority of the tape used to be agents trading with themselves, and that is
-exactly the tape `MomentumAgent` and `markout` read. `Order.ttl` expires
-stale passive quotes, so a long run no longer ends with an unboundedly thick
-book. `Analytics.wash_trade_fraction()` audits the first; under the default
-policy it is 0 by construction.
+an agent's own resting quote instead of printing a wash trade: rerun the
+demo above with `stp=None` and 44% of the tape is agents trading with
+themselves, and that is exactly the tape `MomentumAgent` and `markout` read.
+`Order.ttl` expires stale passive quotes, so a long run no longer ends with
+an unboundedly thick book. `Analytics.wash_trade_fraction()` audits the
+first; under the default policy it is 0.
 
-Throughput in pure CPython is a few hundred thousand operations per second
-on one core for all three hot paths — resting a limit order, crossing a
-marketable one, replaying a message. The exact figures move by more than
-half between machines and between runs, so rather than quote mine, run
+All three hot paths — resting a limit order, crossing a marketable one,
+replaying a message — run at a few hundred thousand operations per second on
+one CPython core. The exact figures move by more than half between machines
+and between runs, so rather than quote mine, run
 `python benchmarks/throughput.py` and read yours.
 
 ## Reading further
@@ -310,7 +313,9 @@ half between machines and between runs, so rather than quote mine, run
 - [`docs/design.md`](docs/design.md) — modelling assumptions, invariants,
   numerics, replay fidelity.
 - [`examples/walkthrough.ipynb`](examples/walkthrough.ipynb) — build,
-  simulate, plot, analyse, replay, end to end.
+  simulate, plot, analyse, replay, end to end. Needs the `plot` extra and a
+  Jupyter install; run it from the `examples/` directory, since it reads
+  `../data/sample_messages.csv`.
 
 ## Known limitations
 
