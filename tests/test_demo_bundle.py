@@ -1,0 +1,65 @@
+"""The browser demo ships a copy of the package. Keep it honest.
+
+`docs/demo/lobster-pkg.zip` is what Pyodide unpacks and imports, so it is the
+engine the published page actually runs. Nothing forces it to match the source
+tree, and when it does not the failure is quiet in the worst way: the page
+keeps working, on last month's code, while its prose cites this month's
+numbers. That happened once already, with a bundle that predated `ValueAgent`.
+
+Rebuild with `python docs/demo/make_pkg.py`.
+"""
+
+from __future__ import annotations
+
+import pathlib
+import sys
+import zipfile
+
+import pytest
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+BUNDLE = ROOT / "docs" / "demo" / "lobster-pkg.zip"
+
+sys.path.insert(0, str(ROOT / "docs" / "demo"))
+from make_pkg import sources  # noqa: E402
+
+REBUILD = "stale bundle; rebuild with `python docs/demo/make_pkg.py`"
+
+
+@pytest.fixture(scope="module")
+def bundled() -> dict[str, bytes]:
+    with zipfile.ZipFile(BUNDLE) as z:
+        return {n: z.read(n) for n in z.namelist()}
+
+
+def test_bundle_holds_every_module(bundled):
+    want = {str(p.relative_to(ROOT)) for p in sources()}
+    assert want - set(bundled) == set(), REBUILD
+
+
+def test_bundle_holds_nothing_extra(bundled):
+    want = {str(p.relative_to(ROOT)) for p in sources()}
+    assert set(bundled) - want == set(), REBUILD
+
+
+@pytest.mark.parametrize("path", sources(), ids=lambda p: p.name)
+def test_bundled_source_is_byte_identical(bundled, path):
+    name = str(path.relative_to(ROOT))
+    assert bundled.get(name) == path.read_bytes(), f"{name}: {REBUILD}"
+
+
+def test_the_demo_driver_imports_only_what_is_bundled():
+    """sim.py may import from `lobster`, and nothing else outside stdlib."""
+    driver = (ROOT / "docs" / "demo" / "sim.py").read_text()
+    import ast
+    tree = ast.parse(driver)
+    third_party = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            third_party.add(node.module.split(".")[0])
+        elif isinstance(node, ast.Import):
+            third_party.update(a.name.split(".")[0] for a in node.names)
+    allowed = {"lobster", "math", "json", "__future__"}
+    assert third_party <= allowed, (
+        f"sim.py imports {third_party - allowed}, which Pyodide will not have"
+    )

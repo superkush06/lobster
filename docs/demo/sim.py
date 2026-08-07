@@ -1,24 +1,45 @@
 """Driver the browser figures call into.
 
-Everything interesting already lives in the package; this only wires two market
-makers with different wire delays into a `Simulation` and reports what the tape
-says afterwards. The numbers the page draws come from the package itself,
-from the matching engine and `Analytics.markout`, rather than from a
+Everything interesting already lives in the package. This wires it into the
+three experiments the page runs and reports what the tape says afterwards. The
+numbers the page draws come from the package itself, from the matching engine,
+`Analytics.markout`, `lobster.stylized` and `fit_power_law`, rather than from a
 re-derivation in JavaScript.
 
-The one addition is `_ladder`: a periodic snapshot of the bid side that keeps
-each level's orders separate instead of summing them, which is the thing the
-first figure animates. It is read straight off `book.iter_levels`, so it is the
-real queue the engine matched against, not a reconstruction.
+Three experiments, two agent mixes, one engine:
+
+* `run` / `one` race two makers that differ only in wire delay. Nothing else
+  is in the book but noise, because anything that quotes heavily near the
+  touch dilutes the thing being measured: add the value ladder here and the
+  faster maker's share of the front of the queue falls from 0.72 to 0.58.
+* `impact_point` works a parent order into the mix `docs/validation.md`
+  scores, with a switch for the latent-liquidity ladder. That switch is the
+  difference between cost that is concave in size and cost that is convex.
+* `tape_facts` runs the same mix once and hands back the return distribution
+  and the volatility autocorrelation.
+
+The one addition to the package is `_ladder`: a periodic snapshot of the bid
+side that keeps each level's orders separate instead of summing them, which is
+the thing the first figure animates. It is read straight off
+`book.iter_levels`, so it is the real queue the engine matched against.
 """
 
 from __future__ import annotations
 
-from lobster.agents import MarketMakerAgent, NoiseAgent
+import math
+
+from lobster.agents import (
+    MarketMakerAgent,
+    MomentumAgent,
+    NoiseAgent,
+    ValueAgent,
+)
 from lobster.analytics import Analytics
+from lobster.execution import execute_metaorder, fit_power_law
 from lobster.latency import ConstantLatency, JitteredLatency
 from lobster.order import Side
 from lobster.sim import Simulation
+from lobster.stylized import ReturnFacts, log_returns
 
 FAST, SLOW = 1, 2
 MM = dict(half_spread=0.4, qty=10, inv_skew=0.0, inventory_cap=10_000)
@@ -160,3 +181,194 @@ def sweep(fast_latency: float, slow_latency: float, seeds=SWEEP_SEEDS):
         out["fills_slow"].append(r["fills_slow"])
         out["curves"].append(r["lead_curve"])
     return out
+
+
+# ---------------------------------------------------------------------------
+# Experiment 2: what a big order costs
+# ---------------------------------------------------------------------------
+
+IMPACT_SIZES = (40, 100, 250, 630, 1280)
+
+
+def _impact_mix(latent: bool):
+    """The mix `docs/validation.md` scores, with the latent ladder switchable.
+
+    Returns the agents and the `ValueAgent` itself, because impact has to be
+    measured against the efficient price that agent is quoting off. Without
+    that control a fundamental that wandered during execution is billed as
+    impact, and the fitted exponent stops meaning anything.
+    """
+    agents = [
+        NoiseAgent(agent_id=1, intensity=0.6, spread_offset=0.6, qty=8,
+                   market_order_rate=0.25),
+        NoiseAgent(agent_id=2, intensity=0.5, spread_offset=0.6, qty=8,
+                   market_order_rate=0.25),
+        MomentumAgent(agent_id=3, lookback=20, threshold=0.5, qty=5,
+                      max_position=100),
+        MarketMakerAgent(agent_id=4, half_spread=0.4, qty=12, inv_skew=0.02),
+    ]
+    va = ValueAgent(agent_id=5, value=100.0) if latent else None
+    if va is not None:
+        agents.append(va)
+    return agents, va
+
+
+def impact_point(size: int, latent: bool = True, trials: int = 3,
+                 warmup: int = 300, seed: int = 1000):
+    """Mean cost per share of a parent order of `size`, net of the half-spread.
+
+    One point on the curve. The page asks for them one at a time so it can
+    draw each as it lands rather than freezing for the whole sweep.
+    """
+    costs, halves = [], []
+    for t in range(trials):
+        agents, va = _impact_mix(latent)
+        sim = Simulation(agents=agents, seed=seed + t)
+        for _ in sim.run(warmup):
+            pass
+        if sim.book.spread is None:
+            continue
+        halves.append(sim.book.spread / 2.0)
+        mo = execute_metaorder(
+            sim, Side.BUY, size, slice_qty=8, every=2, agent_id=99,
+            start_ts=float(warmup),
+            reference=None if va is None else (lambda va=va: va.value),
+        )
+        if mo.shortfall is not None:
+            costs.append(mo.shortfall)
+    if not costs:
+        return None
+    return round(sum(costs) / len(costs) - sum(halves) / len(halves), 6)
+
+
+def impact_fit(sizes, costs):
+    """Fit cost ~ k * Q**delta. `delta` near 0.5 is the square-root law."""
+    fit = fit_power_law(list(sizes), list(costs))
+    if fit is None:
+        return None
+    k, delta = fit
+    return {"k": k, "exponent": round(delta, 4)}
+
+
+# ---------------------------------------------------------------------------
+# Experiment 3: does the tape look like a real one?
+# ---------------------------------------------------------------------------
+
+_TAPE = None
+
+
+def tape_begin(seed: int = 7):
+    """Start a tape run the page can advance in pieces.
+
+    Nine thousand ticks is about eleven seconds under WebAssembly, which is a
+    long time to show an empty figure. Held here so the browser can step it and
+    redraw between steps.
+    """
+    global _TAPE
+    agents, _ = _impact_mix(True)
+    _TAPE = {"sim": Simulation(agents=agents, seed=seed), "k": 0}
+    return 0
+
+
+def tape_advance(chunk: int = 1500):
+    """Run `chunk` more ticks and report the histogram so far."""
+    st = _TAPE
+    for _ in range(chunk):
+        st["sim"].step(ts=float(st["k"]))
+        st["k"] += 1
+    mids = [m.mid for m in st["sim"].metrics if m.mid is not None]
+    h = _histogram(log_returns(mids))
+    h["k"] = st["k"]
+    return h
+
+
+def _histogram(r, bins: int = 41, clip: float = 5.0):
+    n = len(r)
+    if n < 2:
+        return {"n": n, "edges": [], "counts": [], "gauss": [], "zero_share": 0.0}
+    mu = sum(r) / n
+    sd = math.sqrt(sum((x - mu) ** 2 for x in r) / (n - 1)) or 1.0
+    edges = [-clip + 2 * clip * i / bins for i in range(bins + 1)]
+    counts = [0] * bins
+    for x in r:
+        j = int(((x - mu) / sd + clip) / (2 * clip) * bins)
+        if 0 <= j < bins:
+            counts[j] += 1
+    width = 2 * clip / bins
+    gauss = [n * width * math.exp(-c * c / 2) / math.sqrt(2 * math.pi)
+             for c in (e + width / 2 for e in edges[:-1])]
+    return {
+        "n": n,
+        "zero_share": round(sum(1 for x in r if x == 0.0) / n, 4),
+        "edges": [round(e, 4) for e in edges],
+        "counts": counts,
+        "gauss": [round(g, 3) for g in gauss],
+    }
+
+
+def tape_finish():
+    """The autocorrelations and moments, once enough ticks have accumulated."""
+    mids = [m.mid for m in _TAPE["sim"].metrics if m.mid is not None]
+    r = log_returns(mids)
+    facts = ReturnFacts.measure(r, max_lag=100)
+    out = _histogram(r)
+    out.update({
+        "abs_acf": [round(v, 5) for v in facts.abs_ret_acf],
+        "ret_acf": [round(v, 5) for v in facts.ret_acf[:20]],
+        "kurtosis": round(facts.excess_kurtosis, 2),
+        "tail_index": (round(facts.tail_index, 2)
+                       if facts.tail_index is not None else None),
+        "decay": (round(facts.clustering_decay, 3)
+                  if facts.clustering_decay is not None else None),
+    })
+    return out
+
+
+def tape_facts(steps: int = 9000, seed: int = 7, bins: int = 41,
+               clip: float = 5.0):
+    """Return distribution and volatility memory from one run of the mix.
+
+    The histogram is of returns in units of their own standard deviation, so
+    it can be laid over a standard normal with the same area. Zero returns are
+    counted and reported separately: the mid only moves when the touch does,
+    so a large point mass at zero is real and it inflates kurtosis
+    mechanically. Saying how many there are is the difference between a heavy
+    tail and an artefact.
+    """
+    agents, _ = _impact_mix(True)
+    sim = Simulation(agents=agents, seed=seed)
+    for _ in sim.run(steps):
+        pass
+    mids = [m.mid for m in sim.metrics if m.mid is not None]
+    r = log_returns(mids)
+    facts = ReturnFacts.measure(r, max_lag=100)
+
+    n = len(r)
+    zeros = sum(1 for x in r if x == 0.0)
+    mu = sum(r) / n
+    sd = math.sqrt(sum((x - mu) ** 2 for x in r) / (n - 1))
+    edges = [-clip + 2 * clip * i / bins for i in range(bins + 1)]
+    counts = [0] * bins
+    for x in r:
+        z = (x - mu) / sd
+        j = int((z + clip) / (2 * clip) * bins)
+        if 0 <= j < bins:
+            counts[j] += 1
+    width = 2 * clip / bins
+    gauss = [n * width * math.exp(-c * c / 2) / math.sqrt(2 * math.pi)
+             for c in (e + width / 2 for e in edges[:-1])]
+
+    return {
+        "n": n,
+        "zero_share": round(zeros / n, 4),
+        "edges": [round(e, 4) for e in edges],
+        "counts": counts,
+        "gauss": [round(g, 3) for g in gauss],
+        "abs_acf": [round(v, 5) for v in facts.abs_ret_acf],
+        "ret_acf": [round(v, 5) for v in facts.ret_acf[:20]],
+        "kurtosis": round(facts.excess_kurtosis, 2),
+        "tail_index": (round(facts.tail_index, 2)
+                       if facts.tail_index is not None else None),
+        "decay": (round(facts.clustering_decay, 3)
+                  if facts.clustering_decay is not None else None),
+    }
