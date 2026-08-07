@@ -54,7 +54,7 @@
   /* figures: no card, no border, no caption */
   figure { margin: 2.8rem 0 0 }
   canvas { display: block; width: 100% }
-  /* the live finding: prose measure, prose left edge — never a grey caption */
+  /* the live finding: prose measure, prose left edge, never a grey caption */
   .said { font-size: 1.09rem; line-height: 1.52; color: #5E594F; margin: 1.1rem 0 0 }
 
   /* controls: colour is the label */
@@ -105,8 +105,8 @@
   <p>An order book is a queue, and the only way to the front of a queue is to arrive early.
     Below is the bid side of one. Each row is a price; each block inside a row is a single
     resting order, drawn left to right in the order it will be filled. Most book views collapse
-    a row to a single number, which hides the only thing that matters here — so this one keeps
-    the orders apart and colours them by who sent them:</p>
+    a row to a single number, which hides the only thing that matters here. This one keeps the
+    orders apart and colours them by who sent them:</p>
 </div>
 
 <div class="wide">
@@ -142,9 +142,10 @@
     there. Give them the same delay and the advantage disappears; overshoot, and it changes
     hands.</p>
 
-  <p>That is the whole mechanism. Not a better price, not a bigger size, not a cleverer model
-    &mdash; arrival order. One run of fifteen hundred ticks would not tell you whether it were
-    real or whether that seed happened to be kind, so here are twelve, each a separate market:</p>
+  <p>That is the whole mechanism, and all of it is arrival order. The two makers quote the same
+    price, in the same size, off the same model. One run of fifteen hundred ticks would not tell
+    you whether the effect were real or whether that seed happened to be kind, so here are
+    twelve, each a separate market:</p>
 </div>
 
 <div class="wide">
@@ -154,12 +155,12 @@
 
 <div class="text">
   <p>So being early wins the queue. The obvious next thought is that it therefore wins money,
-    and that turns out to be wrong &mdash; which is the more interesting half of this.</p>
+    and that turns out to be wrong. It is the more interesting half of this.</p>
 
   <p><strong>Markout</strong> is the average move in the mid price over the twenty ticks after
     one of your orders fills, signed by whether you bought or sold. Positive means the market
-    kept going your way. Negative means you were the one who got run over &mdash; you were
-    <em>adversely selected</em>. Here is every seed, one dot each:</p>
+    kept going your way. Negative means you were the one who got run over, which has a name:
+    you were <em>adversely selected</em>. Here is every seed, one dot each:</p>
 </div>
 
 <div class="wide">
@@ -168,17 +169,21 @@
 <div class="text"><p class="said" id="sMark"></p></div>
 
 <div class="text">
-  <p>The reason is not subtle once you see it. A sweep arrives when somebody wants the price
-    moved, and it eats the queue from the front. Being first in line is not a way to avoid that
-    trade &mdash; it is a way to be guaranteed it. The maker behind you fills only on the sweeps
-    big enough to reach it, and skips every small one that was about to go against you both.</p>
+  <p>The reason is plain once you see it. A sweep arrives when somebody wants the price moved,
+    and it eats the queue from the front. Being first in line guarantees you that trade. The
+    maker behind you fills only on the sweeps big enough to reach it, and skips every small one
+    that was about to go against you both. That a passive maker loses to the flow it fills is
+    the oldest result in the field, from
+    <a href="https://github.com/superkush06/lobster/blob/main/docs/validation.md">Glosten and
+    Milgrom (1985)</a>; what the sliders add is that buying your way to the front of the queue
+    buys you more of it.</p>
 
   <p id="close"></p>
 
   <footer>
     Every number here is computed by <a href="https://github.com/superkush06/lobster">lobster</a>'s
-    matching engine &mdash; the Python package itself, compiled to WebAssembly and running in this
-    tab, not a reimplementation in JavaScript. The driver the page calls into is
+    matching engine: the Python package itself, compiled to WebAssembly and running in this tab
+    rather than reimplemented in JavaScript. The driver the page calls into is
     <a href="https://github.com/superkush06/lobster/blob/main/docs/demo/sim.py">sim.py</a>, about
     ninety lines. Nothing here is precomputed; move a handle and the simulation runs again.
   </footer>
@@ -214,7 +219,7 @@ function ctx(cv, h) {
   return { c, w, h };
 }
 
-/* figure 1 — the ladder, one block per resting order.
+/* figure 1: the ladder, one block per resting order.
    Bar length is absolute resting size on a scale shared by every level and
    every frame, so a deep level reads as deep. Normalising per level would draw
    a lone six-lot order the same width as twenty lots and destroy the encoding. */
@@ -281,7 +286,7 @@ function drawLadder() {
   c.fillText("BID SIDE, TOP " + ROWS + " LEVELS", w - padR, top + ROWS * RH + 20);
 }
 
-/* figure 2 — front-of-queue share */
+/* figure 2: front-of-queue share */
 function drawLead() {
   const { c, w, h } = ctx($("#lead"), 168);
   if (!D) return;
@@ -319,11 +324,11 @@ function drawLead() {
   c.fillText((last * 100).toFixed(0) + "%", X(v.length - 1) + 10, Y(last));
 }
 
-/* figure 3 — markout as one dot per seed. A pair of bars would show a
+/* figure 3: markout as one dot per seed. A pair of bars would show a
    difference; the question is whether the two distributions are even apart. */
 function drawMark() {
   const { c, w } = ctx($("#mark"), 186);
-  if (!D || !S) return;
+  if (!D || !S || !S.share.length) return;
   const all = S.markout_fast.concat(S.markout_slow);
   const m = Math.max(.04, ...all.map(Math.abs)) * 1.12;
   const L = 96, R = 24, T = 40, RH2 = 62;
@@ -360,7 +365,7 @@ function drawMark() {
 
 const redraw = () => { drawLadder(); drawLead(); drawMark(); };
 
-/* slider — 4px track, filled portion is the same hue */
+/* slider: 4px track, filled portion is the same hue */
 function slider(el, readout, lo, hi, val, colour, onDone) {
   const fil = el.querySelector(".fil"), knb = el.querySelector(".knb");
   el.querySelector(".trk").style.background = colour;
@@ -397,6 +402,15 @@ function slider(el, readout, lo, hi, val, colour, onDone) {
 
 /* run */
 const pct = (x) => (x * 100).toFixed(0) + "%";
+// mirrors sim.SWEEP_SEEDS; the page runs them one at a time rather than in a
+// single call, so it can draw each seed as it arrives
+const SEEDS = Array.from({ length: 12 }, (_, i) => 11 + i);
+
+// Give the browser a frame to paint the seed that just landed. A hidden tab
+// throttles rAF to about 1fps, which would add a second per seed for nobody's
+// benefit, so in that case keep going instead.
+const yieldToPaint = () =>
+  document.hidden ? Promise.resolve() : new Promise(requestAnimationFrame);
 
 async function simulate() {
   // Pyodide is single-threaded, so a drag during a run has to wait rather than
@@ -404,16 +418,13 @@ async function simulate() {
   // ends up showing results for a handle position the reader has moved off.
   if (busy) { pending = true; return; }
   busy = true;
-  $("#boot").textContent = "running";
   const t0 = performance.now();
-  const raw = await py.runPythonAsync(`import json; json.dumps(sim.run(${vFast}, ${vSlow}))`);
-  D = JSON.parse(raw); frame = 0;
-  drawLadder();
-  $("#boot").textContent = "running 12 seeds";
-  S = JSON.parse(await py.runPythonAsync(
-    `import json; json.dumps(sim.sweep(${vFast}, ${vSlow}))`));
-  $("#boot").textContent =
-    `${S.share.length + 1} runs · ${Math.round(performance.now() - t0)} ms`;
+  const f0 = vFast, s0 = vSlow;
+
+  $("#boot").textContent = "running";
+  D = JSON.parse(await py.runPythonAsync(
+    `import json; json.dumps(sim.run(${f0}, ${s0}))`));
+  frame = 0;
 
   // one size scale for every level and every frame, so bars never rescale mid-play
   QMAX = 1;
@@ -421,8 +432,38 @@ async function simulate() {
     const t = lvl.q.reduce((a, b) => a + b[1], 0);
     if (t > QMAX) QMAX = t;
   }));
+  drawLadder();
 
-  // who is actually early — never assume the labels still hold
+  // The remaining seeds run one at a time and are drawn as they land. A whole
+  // sweep is a second of CPU natively and several under WebAssembly, which is
+  // far too long to hold the page still; this way the dots accumulate in front
+  // of the reader, which is also a fairer picture of what the figure means.
+  S = { share: [], markout_fast: [], markout_slow: [],
+        fills_fast: [], fills_slow: [], curves: [] };
+  for (const seed of SEEDS) {
+    if (pending) break;              // a handle moved, so this sweep is stale
+    const r = JSON.parse(await py.runPythonAsync(
+      `import json; json.dumps(sim.one(${f0}, ${s0}, ${seed}))`));
+    S.share.push(r.share_fast);
+    S.markout_fast.push(r.markout_fast);
+    S.markout_slow.push(r.markout_slow);
+    S.fills_fast.push(r.fills_fast);
+    S.fills_slow.push(r.fills_slow);
+    S.curves.push(r.lead_curve);
+    $("#boot").textContent = `run ${S.share.length + 1} of ${SEEDS.length + 1}`;
+    drawLead(); drawMark(); writeCopy();
+    await yieldToPaint();
+  }
+  $("#boot").textContent =
+    `${S.share.length + 1} runs · ${Math.round(performance.now() - t0)} ms`;
+  redraw(); busy = false;
+  if (pending) { pending = false; await simulate(); }
+}
+
+function writeCopy() {
+  if (!D || !S || S.share.length < 2) return;
+
+  // who is actually early. Never assume the labels still hold.
   const gap = vSlow - vFast, level = Math.abs(gap) < 0.02;
   const A = gap > 0 ? "f" : "s", B = gap > 0 ? "s" : "f";
   const nA = gap > 0 ? "fast maker" : "slow maker", nB = gap > 0 ? "slow maker" : "fast maker";
@@ -448,7 +489,7 @@ async function simulate() {
   const t = mean(diff) / (sd(diff) / Math.sqrt(N));
 
   $("#sLead").innerHTML = level
-    ? `On the same wire the queue splits evenly &mdash;
+    ? `On the same wire the queue splits evenly,
        <span class="n">${pct(mean(S.share))}</span> across all
        <span class="n">${N}</span> seeds, spread <span class="n">±${(sd(S.share) * 100).toFixed(1)}</span>
        points. This is the control, and it is how you check that none of this is scripted.`
@@ -465,14 +506,14 @@ async function simulate() {
        <span class="n">${mean(S.markout_slow).toFixed(4)}</span>.`
     : `The clouds overlap. The <span class="${A}">${nA}</span> won the queue in
        <span class="n">${wonQueue} of ${N}</span> runs above, and came out ahead on markout in
-       <span class="n">${aheadA} of ${N}</span> &mdash; mean gap
+       <span class="n">${aheadA} of ${N}</span>. The mean gap is
        <span class="n">${mean(diff) >= 0 ? "+" : ""}${mean(diff).toFixed(4)}</span> against a
        spread of <span class="n">${sd(diff).toFixed(4)}</span>
        (<span class="n">t&nbsp;=&nbsp;${t.toFixed(1)}</span>). Whatever speed is buying here, it
        is not a better fill.`;
 
   $("#close").innerHTML = level
-    ? `Same quotes, same prices, same wire &mdash; and nothing left to win. Pull either handle
+    ? `Same quotes, same prices, same wire, and nothing left to win. Pull either handle
        back and the queue tilts again, while these two clouds stay exactly where they are.`
     : `So the title is the whole claim, and it is deliberately narrow. Latency bought the
        <span class="${A}">${nA}</span> <span class="n">${fA.toLocaleString()}</span> fills to the
@@ -480,9 +521,6 @@ async function simulate() {
        bought the front of the queue in <span class="n">${wonQueue} of ${N}</span> runs. It did
        not buy a better trade. A demo that stopped one figure earlier would have told you it
        did.`;
-
-  redraw(); busy = false;
-  if (pending) { pending = false; await simulate(); }
 }
 
 function loop(t) {
@@ -515,7 +553,7 @@ document.fonts.ready.then(redraw);
     await simulate();
     requestAnimationFrame(loop);
   } catch (e) {
-    $("#boot").textContent = "failed — " + e.message;
+    $("#boot").textContent = "failed: " + e.message;
     console.error(e);
   }
 })();

@@ -2,8 +2,9 @@
 
 Everything interesting already lives in the package; this only wires two market
 makers with different wire delays into a `Simulation` and reports what the tape
-says afterwards. The numbers the page draws are the package's own — the
-matching engine, `Analytics.markout` — not a re-derivation in JavaScript.
+says afterwards. The numbers the page draws come from the package itself,
+from the matching engine and `Analytics.markout`, rather than from a
+re-derivation in JavaScript.
 
 The one addition is `_ladder`: a periodic snapshot of the bid side that keeps
 each level's orders separate instead of summing them, which is the thing the
@@ -28,7 +29,7 @@ def _ladder(sim: Simulation, depth: int = 10, cap: int = 12):
 
     Standard book views aggregate a level to one number, which hides the only
     thing that matters here: within a level, orders fill in arrival order. So
-    this keeps the orders separate and tags each with its owner —
+    this keeps the orders separate and tags each with its owner:
     1 fast, 2 slow, 0 anyone else.
     """
     out = []
@@ -56,12 +57,15 @@ def _front_of_queue(sim: Simulation):
 
 
 def run(fast_latency: float, slow_latency: float, steps: int = 1500,
-        seed: int = 11, queue_every: int = 6, warmup: int = 120):
+        seed: int = 11, queue_every: int = 6, warmup: int = 120,
+        capture: bool = True):
     """Race two makers that differ only in wire delay, and report the tape.
 
     `warmup` ticks are simulated but not filmed: the book starts empty, and the
     first hundred-odd ticks are it filling up rather than the thing being shown.
-    Every statistic below still counts them — only `frames` skips them.
+    Every statistic below still counts them. Only `frames` skips them.
+
+    `capture=False` drops the film strip, which only the first figure wants.
     """
     sim = Simulation(
         agents=[
@@ -87,7 +91,7 @@ def run(fast_latency: float, slow_latency: float, steps: int = 1500,
         leader = _front_of_queue(sim)
         if leader is not None:
             front[leader] += 1
-        if k >= warmup and k % queue_every == 0:
+        if capture and k >= warmup and k % queue_every == 0:
             frames.append(_ladder(sim))
         if m.mid is not None:
             mids.append(round(m.mid, 3))
@@ -120,18 +124,35 @@ def run(fast_latency: float, slow_latency: float, steps: int = 1500,
     }
 
 
-def sweep(fast_latency: float, slow_latency: float, seeds=range(11, 23)):
+SWEEP_SEEDS = range(11, 23)
+
+_SUMMARY = ("share_fast", "markout_fast", "markout_slow",
+            "fills_fast", "fills_slow", "lead_curve")
+
+
+def one(fast_latency: float, slow_latency: float, seed: int):
+    """One seed, summary only.
+
+    The browser calls this in a loop instead of `sweep` so it can draw each
+    seed as it lands. A full sweep is a second of CPU natively and several
+    under WebAssembly, which is a long time to hold a page still.
+    """
+    r = run(fast_latency, slow_latency, seed=seed, capture=False)
+    return {k: r[k] for k in _SUMMARY}
+
+
+def sweep(fast_latency: float, slow_latency: float, seeds=SWEEP_SEEDS):
     """The same race under a dozen different random seeds.
 
     One run cannot tell you whether an effect is real or whether that seed was
     kind to you. Queue position survives this and markout does not, which is the
-    point the third figure is making — so the page has to actually do the runs
+    point the third figure is making, so the page has to actually do the runs
     rather than quote a single lucky one.
     """
     out = {"share": [], "markout_fast": [], "markout_slow": [],
            "fills_fast": [], "fills_slow": [], "curves": []}
     for sd in seeds:
-        r = run(fast_latency, slow_latency, seed=sd, queue_every=60)
+        r = one(fast_latency, slow_latency, sd)
         out["share"].append(r["share_fast"])
         out["markout_fast"].append(r["markout_fast"])
         out["markout_slow"].append(r["markout_slow"])
