@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>lobster: a stock exchange you can take apart</title>
-<meta name="description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run four experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
+<meta name="description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run five experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
 <meta name="theme-color" content="#F7F4EF" />
 <meta name="author" content="Kushagra Behl" />
 <link rel="canonical" href="https://superkush06.github.io/lobster/demo/" />
@@ -16,7 +16,7 @@
 <meta property="og:site_name" content="lobster" />
 <meta property="og:url" content="https://superkush06.github.io/lobster/demo/" />
 <meta property="og:title" content="lobster: a stock exchange you can take apart" />
-<meta property="og:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run four experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
+<meta property="og:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run five experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
 <meta property="og:image" content="https://superkush06.github.io/lobster/demo/card.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
@@ -24,7 +24,7 @@
 <meta property="og:image:alt" content="A limit order book ladder. At one price level a blue block labelled FAST sits ahead of an orange block labelled SLOW, annotated: both makers at this price." />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="lobster: a stock exchange you can take apart" />
-<meta name="twitter:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run four experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
+<meta name="twitter:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run five experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
 <meta name="twitter:image" content="https://superkush06.github.io/lobster/demo/card.png" />
 <meta name="twitter:image:alt" content="A limit order book ladder with a fast maker queued ahead of a slow maker at the same price." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -225,15 +225,16 @@
   <a href="#two"><i>02</i>Impact</a>
   <a href="#three"><i>03</i>Tape</a>
   <a href="#four"><i>04</i>Book</a>
+  <a href="#five"><i>05</i>Replay</a>
 </nav>
 
 <div id="prog"></div>
 
 <header class="text hero">
-  <span class="m">An interactive visualisation &nbsp;::&nbsp; four experiments &amp; a live market</span>
+  <span class="m">An interactive visualisation &nbsp;::&nbsp; five experiments &amp; a live market</span>
   <h1>lobster: a stock exchange you can take apart</h1>
   <p class="dek">An interactive visualisation of a limit order book. Start with a live market,
-    change who is trading in it, then run four experiments that measure what changed. Every
+    change who is trading in it, then run five experiments that measure what changed. Every
     number on this page is computed here, in this tab, by a matching engine compiled to
     WebAssembly.</p>
   <div class="banner">
@@ -242,6 +243,7 @@
     <span><b>02</b> &nbsp;Impact</span>
     <span><b>03</b> &nbsp;The tape</span>
     <span><b>04</b> &nbsp;The book</span>
+    <span><b>05</b> &nbsp;Real message data</span>
   </div>
 </header>
 
@@ -532,6 +534,40 @@
   </div>
 </div>
 <div class="text"><div class="finding"><span class="m">Finding &middot; experiment four</span><p id="sWalk"></p></div></div>
+<div class="endrule"><div></div></div>
+
+<div class="text open" id="five">
+  <div class="onum">05</div>
+  <span class="m">Experiment five of five &middot; the feed</span>
+  <h2>Rebuild the book from an exchange feed</h2>
+  <p class="thesis">Everything above ran a simulation. This one takes an exchange's own event
+    stream and reconstructs what was resting, message by message.</p>
+  <p>NASDAQ order flow is distributed by <a href="https://lobsterdata.com">LOBSTER</a> as a
+    message file: one event per line, six columns, no book. Time, event type, order id, size,
+    price in ten-thousandths, and direction. That is the whole feed. The book is not in the
+    file; it is what you get by applying the events in order, and getting that reconstruction
+    right is the difference between analysing a market and analysing your own bookkeeping.</p>
+  <p>Seven event types, and three of them deliberately leave the visible book alone. A hidden
+    execution fills against size that was never displayed, a cross prints at an auction, and a
+    halt is not a trade at all. Skipping them is correct rather than lazy, and the counters
+    below report how many were skipped so the claim is checkable.</p>
+  <p>The feed on the left is generated rather than downloaded, because the real files are
+    licensed and gigabytes wide, but the format and the event vocabulary are LOBSTER's and
+    <span class="n">parse_lobster_line</span> reads these exactly as it reads NASDAQ's. The
+    book on the right is being rebuilt from it as you watch:</p>
+</div>
+
+<div class="wide">
+  <figure><canvas id="feed"></canvas></figure>
+  <div class="tiles" id="feedTiles"></div>
+  <div class="bar">
+    <span><button class="m" id="feedPlay">&#10073;&#10073; pause</button>
+      &nbsp;&nbsp;<button class="m" id="feedReset">&#8635; restart</button></span>
+    <span class="m" id="feedState">waiting</span>
+  </div>
+</div>
+<div class="text"><div class="finding"><span class="m">Finding &middot; experiment five</span>
+  <p id="sFeed"></p></div></div>
 <div class="endrule"><div></div></div>
 
 <div class="text open" id="all">
@@ -995,7 +1031,7 @@ async function computeWalk() {
 
 async function refreshWalk() {
   walkRes = await pyJSON(`sim.walk(${walkQty})`);
-  drawWalk(); drawLive(); sayWalk(); fillScore();
+  drawWalk(); drawLive(); drawFeed(); sayWalk(); fillScore();
 }
 
 function sayWalk() {
@@ -1184,6 +1220,136 @@ function seg(host, opts, get, set) {
   }
   paint();
 }
+
+/* ===== 05 · rebuild the book from a message feed ========================
+   The feed on the left in the format the file actually uses, the book it
+   implies on the right. Split like that on purpose: the point is that one
+   is derived from the other and the file contains no book at all.        */
+
+let FEED = null, feedI = 0, feedOn = true, feedT = 0;
+const EVCOL = { 1: "#1B6CA8", 2: "#8B857A", 3: "#8B857A",
+                4: "#C05F1B", 5: "#B5893C", 6: "#B5893C", 7: "#B03A2E" };
+
+function drawFeed() {
+  const H = 400;
+  const { c, w } = ctx($("#feed"), H);
+  if (!FEED) {
+    c.fillStyle = QUIET; c.font = MONO(11, 500);
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText("parsing the feed", w / 2, H / 2);
+    return;
+  }
+  const split = Math.min(360, w * 0.52);
+  const top = 26, rowH = 13, nRows = 24;
+  c.font = MONO(10, 500); c.textBaseline = "middle";
+  c.fillStyle = QUIET; c.textAlign = "left";
+  c.fillText("MESSAGE FEED", 0, 11);
+  c.fillText("BOOK IT IMPLIES", split + 26, 11);
+
+  // the raw lines, newest at the bottom
+  const first = Math.max(0, feedI - nRows + 1);
+  for (let k = first; k <= feedI; k++) {
+    const y = top + (k - first) * rowH + 6;
+    const ev = parseInt(FEED.lines[k].split(",")[1], 10);
+    const live = k === feedI;
+    c.globalAlpha = live ? 1 : 0.3 + 0.7 * ((k - first) / nRows);
+    c.fillStyle = live ? INK : QUIET;
+    c.font = MONO(9.5, live ? 500 : 400);
+    c.fillText(FEED.lines[k], 0, y);
+    c.fillStyle = EVCOL[ev] || QUIET;
+    c.fillRect(split - 16, y - 3.5, 7, 7);
+    c.globalAlpha = 1;
+  }
+  c.strokeStyle = HAIR; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(split + 8, top - 8); c.lineTo(split + 8, H - 14); c.stroke();
+
+  // the book that feed implies, at this point in the stream
+  const fr = FEED.frames.reduce((a, f) => (f.i <= feedI ? f : a), FEED.frames[0]);
+  const bx = split + 26, bw = w - bx;
+  const all = fr.bid.concat(fr.ask);
+  const qmax = all.length ? Math.max(...all.map((r) => r[1])) : 1;
+  const rows = fr.ask.slice().reverse().map((r) => ["ask", r])
+      .concat(fr.bid.map((r) => ["bid", r]));
+  const bh = 15;
+  const y0 = top + 8;
+  rows.slice(0, 22).forEach(([side, [px, q]], i) => {
+    const y = y0 + i * bh + bh / 2;
+    const len = Math.max(3, (q / qmax) * (bw - 96));
+    c.fillStyle = side === "bid" ? "#DCE6EF" : "#F2E2D6";
+    c.fillRect(bx + 54, y - 5.5, len, 11);
+    c.fillStyle = side === "bid" ? FAST : SLOW;
+    c.fillRect(bx + 54, y - 5.5, Math.min(len, 3), 11);
+    c.font = MONO(10, 500); c.textAlign = "right"; c.fillStyle = INK;
+    c.fillText(px.toFixed(2), bx + 46, y);
+    c.textAlign = "left"; c.fillStyle = QUIET; c.font = MONO(9, 500);
+    c.fillText(String(q), bx + 58 + len + 5, y);
+  });
+  if (fr.mid !== null) {
+    c.fillStyle = QUIET; c.font = MONO(9.5, 500); c.textAlign = "left";
+    c.fillText(`MID ${fr.mid.toFixed(2)}`, bx, H - 14);
+  }
+  c.textAlign = "right"; c.fillStyle = QUIET; c.font = MONO(9.5, 500);
+  c.fillText(`MESSAGE ${feedI + 1} OF ${FEED.n}`, w, H - 14);
+}
+
+function feedTiles() {
+  if (!FEED) return;
+  const named = Object.entries(FEED.counts).map(([k, v]) =>
+    [FEED.names[k].toUpperCase(), String(v)]);
+  $("#feedTiles").innerHTML = named.concat([
+    ["APPLIED", String(FEED.applied)],
+    ["UNKNOWN IDS", String(FEED.unknown_total)],
+  ]).map(([k, v]) => `<div class="tile"><span>${k}</span><b>${v}</b></div>`).join("");
+}
+
+async function computeFeed() {
+  if (FEED) return;
+  $("#feedState").textContent = "parsing";
+  FEED = await pyJSON("sim.replay_feed()");
+  runs += 1; tally();
+  feedI = 0; feedTiles(); drawFeed(); sayFeed();
+  $("#feedPlay").addEventListener("click", () => {
+    if (!feedOn && feedI >= FEED.n - 1) feedI = 0;
+    feedOn = !feedOn; feedSetPlay();
+  });
+  $("#feedReset").addEventListener("click", () => {
+    feedI = 0; feedOn = true; feedSetPlay(); drawFeed();
+  });
+  feedSetPlay();
+  (function tick(t) {
+    if (FEED && feedOn && !document.hidden && t - feedT > 110) {
+      if (feedI >= FEED.n - 1) { feedOn = false; feedSetPlay(); }
+      else { feedI += 1; drawFeed(); }
+      feedT = t;
+    }
+    requestAnimationFrame(tick);
+  })(0);
+}
+
+function feedSetPlay() {
+  const done = FEED && feedI >= FEED.n - 1;
+  $("#feedPlay").innerHTML = feedOn ? "&#10073;&#10073; pause"
+    : (done ? "&#8635; replay" : "&#9654; play");
+  $("#feedState").textContent = done
+    ? `${FEED.n} messages applied` : `message ${feedI + 1} of ${FEED.n}`;
+}
+
+function sayFeed() {
+  const skipped = Object.entries(FEED.skipped)
+    .map(([k, v]) => `${v} ${FEED.names[k]}`).join(", ");
+  $("#sFeed").innerHTML =
+    `<span class="n">${FEED.n}</span> messages in, <span class="n">${FEED.applied}</span>
+     applied to the book and <span class="n">${FEED.unknown_total}</span> referring to an
+     order id the book had never seen. That second number is the one that matters: a cold
+     start on a real file shows plenty of them, because the window opens mid-session and the
+     first cancel you meet may belong to an order placed an hour earlier.
+     <span class="n">ReplayStats</span> counts them rather than silently dropping them, and
+     <span class="n">clean()</span> is ${FEED.clean ? "true" : "false"} here because this
+     stream starts from an empty book and every event has an antecedent in it. The
+     ${skipped} left the visible book alone by design.`;
+}
+
+/* ===== the scorecard ===================================================== */
 
 /* the closing scorecard, filled in as each experiment lands */
 const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
@@ -1587,10 +1753,10 @@ document.fonts.ready.then(redraw);
     // inside Pyodide with nothing pointing at the cause.
     const fresh = { cache: "no-store" };
     const stamp = await (await fetch("bundle.json", fresh)).json();
-    const v = `?v=${stamp.sha}`;
-    py.unpackArchive(
-      await (await fetch("lobster-pkg.zip" + v, fresh)).arrayBuffer(), "zip");
-    py.FS.writeFile("sim.py", await (await fetch("sim.py" + v, fresh)).text());
+    py.unpackArchive(await (await fetch(
+      `lobster-pkg.zip?v=${stamp.sha}`, fresh)).arrayBuffer(), "zip");
+    py.FS.writeFile("sim.py", await (await fetch(
+      `sim.py?v=${stamp.driver}`, fresh)).text());
     await py.runPythonAsync("import sys; sys.path.insert(0,'.')\nimport sim");
     slider($("#slFast"), $("#vFast"), .02, .30, vFast, FAST, (v) => { vFast = v; simulate(); });
     slider($("#slSlow"), $("#vSlow"), .02, .30, vSlow, SLOW, (v) => { vSlow = v; simulate(); });
@@ -1644,6 +1810,7 @@ document.fonts.ready.then(redraw);
     watch("#impact", computeImpact);
     watch("#tails", computeTape);
     watch("#walk", computeWalk);
+    watch("#feed", computeFeed);
   } catch (e) {
     $("#boot").textContent = "failed: " + e.message;
     console.error(e);

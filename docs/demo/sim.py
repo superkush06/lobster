@@ -27,6 +27,7 @@ the thing the first figure animates. It is read straight off
 from __future__ import annotations
 
 import math
+import random
 
 from lobster.agents import (
     MarketMakerAgent,
@@ -35,6 +36,7 @@ from lobster.agents import (
     ValueAgent,
 )
 from lobster.analytics import Analytics
+from lobster.book import OrderBook
 from lobster.execution import (
     cost_to_trade,
     execute_metaorder,
@@ -43,6 +45,11 @@ from lobster.execution import (
 from lobster.latency import ConstantLatency, JitteredLatency
 from lobster.matching import match
 from lobster.order import Side
+from lobster.replay import (
+    ReplayStats,
+    apply_message,
+    parse_lobster_line,
+)
 from lobster.sim import Simulation
 from lobster.stylized import ReturnFacts, log_returns
 
@@ -558,3 +565,139 @@ def live_step(n: int = 20, depth: int = 14, max_trades: int = 24):
         "agents": [{"id": a.id, "kind": KINDS.get(a.id, "?"), "inv": a.inventory,
                     "pnl": round(pnl[a.id]["pnl_mtm"], 1)} for a in _LIVE.agents],
     }
+
+
+# ---------------------------------------------------------------------------
+# Experiment 5: rebuild a book from an exchange message feed
+# ---------------------------------------------------------------------------
+
+EVENT_NAMES = {
+    1: "new limit order",
+    2: "partial cancel",
+    3: "delete",
+    4: "execution, visible",
+    5: "execution, hidden",
+    6: "cross / auction",
+    7: "trading halt",
+}
+LOBSTER_SCALE = 1e-4          # LOBSTER prices are in ten-thousandths
+
+
+def _feed(n: int, seed: int):
+    """A LOBSTER-format message stream, in the layout the real files use.
+
+    Six comma-separated columns per line: time, event type, order id, size,
+    price in ten-thousandths, direction. Generated rather than downloaded,
+    because a real file is licensed and gigabytes wide, but the shape and the
+    event vocabulary are the format's, and `parse_lobster_line` reads these
+    the same way it reads NASDAQ's.
+    """
+    rng = random.Random(seed)
+    live: dict[int, tuple[int, int, int]] = {}    # id -> (size, px_ticks, dir)
+    lines, oid, t = [], 0, 34200.0
+    mid = 100_0000                                 # $100.00 in ten-thousandths
+
+    def emit(ev, i, size, px, d):
+        lines.append(f"{t:.6f}, {ev}, {i}, {size}, {px}, {d}")
+
+    while len(lines) < n:
+        t += rng.uniform(0.0004, 0.006)
+        r = rng.random()
+        bids = [q[1] for q in live.values() if q[2] == 1]
+        asks = [q[1] for q in live.values() if q[2] == -1]
+        bb = max(bids) if bids else mid - 100
+        ba = min(asks) if asks else mid + 100
+        if r < 0.46 or len(live) < 6:              # a new limit order
+            oid += 1
+            d = 1 if rng.random() < 0.5 else -1
+            off = (1 + rng.randrange(0, 9)) * 100  # a cent per step
+            # A real feed never shows a crossed visible book, so a new bid
+            # goes at or under the current best ask and a new ask at or over
+            # the best bid. Without this the generator prints books that no
+            # exchange would publish, and the replay faithfully rebuilds them.
+            px = min(ba - 100, bb + 100 - off) if d == 1 else max(bb + 100, ba - 100 + off)
+            size = rng.choice((100, 100, 200, 300, 500))
+            live[oid] = (size, px, d)
+            emit(1, oid, size, px, d)
+        elif r < 0.60 and live:                    # partial cancel
+            i = rng.choice(list(live))
+            size, px, d = live[i]
+            take = max(1, min(size - 1, rng.choice((50, 100))))
+            if take < size:
+                live[i] = (size - take, px, d)
+                emit(2, i, take, px, d)
+        elif r < 0.74 and live:                    # full delete
+            i = rng.choice(list(live))
+            size, px, d = live.pop(i)
+            emit(3, i, size, px, d)
+        elif r < 0.92 and live:                    # visible execution
+            i = rng.choice(list(live))
+            size, px, d = live[i]
+            take = size if rng.random() < 0.4 else max(1, min(size, 100))
+            if take >= size:
+                live.pop(i)
+            else:
+                live[i] = (size - take, px, d)
+            emit(4, i, take, px, d)
+            mid = px                               # the touch got taken
+        elif r < 0.96:                             # hidden execution
+            emit(5, 0, rng.choice((100, 200)), mid, rng.choice((1, -1)))
+        elif r < 0.99:                             # cross
+            emit(6, 0, rng.choice((500, 1000)), mid, 1)
+        else:                                      # halt
+            emit(7, 0, 0, mid, -1)
+    return lines
+
+
+def replay_feed(n: int = 220, seed: int = 4, depth: int = 8, every: int = 4):
+    """Parse and apply a message feed, filming the book as it is rebuilt.
+
+    This is the whole point of `lobster.replay`: hand it an exchange's own
+    event stream and get the visible book back. Types 5, 6 and 7 are carried
+    in the feed and deliberately leave the book alone, because a hidden fill,
+    an auction print and a halt are all things that happen without changing
+    what is resting.
+    """
+    lines = _feed(n, seed)
+    book = OrderBook()
+    stats = ReplayStats()
+    frames, counts = [], {}
+    for k, line in enumerate(lines):
+        msg = parse_lobster_line(line, price_scale=LOBSTER_SCALE)
+        counts[msg.event_type] = counts.get(msg.event_type, 0) + 1
+        apply_message(book, msg, stats=stats)
+        if k % every == 0 or k == len(lines) - 1:
+            frames.append({
+                "i": k,
+                "bid": [[round(lv.price, 2), lv.total_qty]
+                        for lv in _top(book, Side.BUY, depth)],
+                "ask": [[round(lv.price, 2), lv.total_qty]
+                        for lv in _top(book, Side.SELL, depth)],
+                "mid": round(book.mid, 3) if book.mid is not None else None,
+                "ev": msg.event_type,
+            })
+    return {
+        "lines": lines,
+        "frames": frames,
+        "n": len(lines),
+        "names": EVENT_NAMES,
+        "counts": {str(k): v for k, v in sorted(counts.items())},
+        "applied": stats.applied,
+        "unknown_total": stats.unknown_total,
+        "unknown_execs": stats.unknown_execs,
+        "unknown_cancels": stats.unknown_cancels,
+        "unknown_deletes": stats.unknown_deletes,
+        "skipped": {str(k): v for k, v in sorted(stats.skipped_types.items())},
+        "clean": stats.clean,
+        "best_bid": round(book.best_bid, 2) if book.best_bid is not None else None,
+        "best_ask": round(book.best_ask, 2) if book.best_ask is not None else None,
+    }
+
+
+def _top(book, side, depth):
+    out = []
+    for i, lv in enumerate(book.iter_levels(side)):
+        if i >= depth:
+            break
+        out.append(lv)
+    return out

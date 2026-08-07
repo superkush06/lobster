@@ -59,7 +59,7 @@ def main() -> None:
             family=MONO, fontsize=12.5, color=QUIET, va="center")
     ax.text(70, 148, "lobster: a stock exchange you can take apart", family=SERIF,
             fontsize=42, color=INK, va="center")
-    ax.text(72, 206, "A live order book, four experiments, and a matching engine in your browser.",
+    ax.text(72, 206, "A live order book, five experiments, and a matching engine in your browser.",
             family=SERIF, fontsize=20, color="#5E594F", va="center")
 
     rows = frame[:8]

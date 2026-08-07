@@ -4,11 +4,25 @@
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**[Run it in your browser →](https://superkush06.github.io/lobster/demo/)**
-A live order book you can change, then four experiments run on it: queue position
-and adverse selection, metaorder impact, the return distribution, and what the book
-charges right now. That page runs this package under Pyodide, so there is no server
-and no reimplementation.
+A detailed record of experiments and visualisations on a simulated stock
+exchange, with the engine that produced them.
+
+### ▶ [**Click here to run it in your browser**](https://superkush06.github.io/lobster/demo/)
+
+A live order book you can change, and five experiments measured on it:
+
+| | | |
+|---|---|---|
+| **00** | Live market | change who is trading and watch the book reshape |
+| **01** | The queue | what latency buys, and what it does not |
+| **02** | Impact | dial the latent liquidity and watch the cost exponent move |
+| **03** | The tape | fat tails and volatility clustering |
+| **04** | The book | what a trade costs against resting depth, instantly |
+| **05** | Replay | rebuild a book from a NASDAQ-format message feed |
+
+Nothing there is precomputed. The page runs this package under Pyodide, so
+every figure is the library answering in your tab, with no server and no
+reimplementation.
 
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has

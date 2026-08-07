@@ -22,6 +22,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 PKG = ROOT / "lobster"
 BUNDLE = ROOT / "docs" / "demo" / "lobster-pkg.zip"
 STAMP = ROOT / "docs" / "demo" / "bundle.json"
+DRIVER = ROOT / "docs" / "demo" / "sim.py"
 
 
 def sources() -> list[pathlib.Path]:
@@ -44,7 +45,12 @@ def build(out: pathlib.Path = BUNDLE) -> int:
     # is a request to revalidate, and a CDN or a browser is free to answer it
     # from a stale copy; a URL that changes when the bytes change is not.
     sha = hashlib.sha256(out.read_bytes()).hexdigest()[:12]
-    STAMP.write_text(json.dumps({"sha": sha, "modules": len(files)}) + "\n")
+    # sim.py is not in the zip, so it needs its own hash. Sharing the zip's
+    # would mean a driver-only change bumps nothing and the page keeps running
+    # the previous deploy's sim.py against the current HTML.
+    driver = hashlib.sha256(DRIVER.read_bytes()).hexdigest()[:12]
+    STAMP.write_text(json.dumps(
+        {"sha": sha, "driver": driver, "modules": len(files)}) + "\n")
     return len(files)
 
 

@@ -79,7 +79,12 @@ def test_bundle_stamp_matches_the_bundle():
     """
     import hashlib
     import json
-    stamp = json.loads((ROOT / "docs" / "demo" / "bundle.json").read_text())
-    raw = (ROOT / "docs" / "demo" / "lobster-pkg.zip").read_bytes()
+    demo = ROOT / "docs" / "demo"
+    stamp = json.loads((demo / "bundle.json").read_text())
+    raw = (demo / "lobster-pkg.zip").read_bytes()
     assert stamp["sha"] == hashlib.sha256(raw).hexdigest()[:12], REBUILD
     assert stamp["modules"] == len(sources()), REBUILD
+    # sim.py ships outside the zip and is versioned separately, so a
+    # driver-only edit has to move a hash of its own.
+    driver = (demo / "sim.py").read_bytes()
+    assert stamp["driver"] == hashlib.sha256(driver).hexdigest()[:12], REBUILD
