@@ -13,12 +13,15 @@ caught rather than discovered.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import pathlib
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 PKG = ROOT / "lobster"
 BUNDLE = ROOT / "docs" / "demo" / "lobster-pkg.zip"
+STAMP = ROOT / "docs" / "demo" / "bundle.json"
 
 
 def sources() -> list[pathlib.Path]:
@@ -37,10 +40,16 @@ def build(out: pathlib.Path = BUNDLE) -> int:
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
             z.writestr(info, path.read_bytes())
+    # A content hash the page can hang off the asset URL. `cache: "no-cache"`
+    # is a request to revalidate, and a CDN or a browser is free to answer it
+    # from a stale copy; a URL that changes when the bytes change is not.
+    sha = hashlib.sha256(out.read_bytes()).hexdigest()[:12]
+    STAMP.write_text(json.dumps({"sha": sha, "modules": len(files)}) + "\n")
     return len(files)
 
 
 if __name__ == "__main__":
     n = build()
+    sha = json.loads(STAMP.read_text())["sha"]
     print(f"wrote {BUNDLE.relative_to(ROOT)} ({n} modules, "
-          f"{BUNDLE.stat().st_size:,} bytes)")
+          f"{BUNDLE.stat().st_size:,} bytes, sha {sha})")

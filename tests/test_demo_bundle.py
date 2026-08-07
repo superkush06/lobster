@@ -67,3 +67,19 @@ def test_the_demo_driver_imports_only_what_is_bundled():
     assert imported <= allowed, (
         f"sim.py imports {sorted(imported - allowed)}, which Pyodide will not have"
     )
+
+
+def test_bundle_stamp_matches_the_bundle():
+    """bundle.json must name the bytes the page will actually fetch.
+
+    The page hangs a cache-busting version on the asset URL from this file. If
+    the stamp goes stale the URL stops changing, a CDN keeps serving the old
+    zip against new HTML, and the failure is an ImportError deep in Pyodide
+    with nothing pointing at the cause.
+    """
+    import hashlib
+    import json
+    stamp = json.loads((ROOT / "docs" / "demo" / "bundle.json").read_text())
+    raw = (ROOT / "docs" / "demo" / "lobster-pkg.zip").read_bytes()
+    assert stamp["sha"] == hashlib.sha256(raw).hexdigest()[:12], REBUILD
+    assert stamp["modules"] == len(sources()), REBUILD

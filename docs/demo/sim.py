@@ -195,8 +195,12 @@ def sweep(fast_latency: float, slow_latency: float, seeds=SWEEP_SEEDS):
 IMPACT_SIZES = (40, 100, 250, 630, 1280)
 
 
-def _impact_mix(latent: bool):
-    """The mix `docs/validation.md` scores, with the latent ladder switchable.
+def _impact_mix(latent: bool, slope: float = 2.0):
+    """The mix `docs/validation.md` scores, with the latent ladder dialable.
+
+    `slope` is shares per rung per level of distance from fair value, which is
+    the one number that sets how concave cost comes out. Zero removes the
+    ladder entirely.
 
     Returns the agents and the `ValueAgent` itself, because impact has to be
     measured against the efficient price that agent is quoting off. Without
@@ -212,13 +216,14 @@ def _impact_mix(latent: bool):
                       max_position=100),
         MarketMakerAgent(agent_id=4, half_spread=0.4, qty=12, inv_skew=0.02),
     ]
-    va = ValueAgent(agent_id=5, value=100.0) if latent else None
+    va = (ValueAgent(agent_id=5, value=100.0, slope=slope)
+          if latent and slope > 0 else None)
     if va is not None:
         agents.append(va)
     return agents, va
 
 
-def impact_point(size: int, latent: bool = True, trials: int = 3,
+def impact_point(size: int, latent: bool = True, slope: float = 2.0, trials: int = 3,
                  warmup: int = 300, seed: int = 1000):
     """Mean cost per share of a parent order of `size`, net of the half-spread.
 
@@ -227,7 +232,7 @@ def impact_point(size: int, latent: bool = True, trials: int = 3,
     """
     costs, halves = [], []
     for t in range(trials):
-        agents, va = _impact_mix(latent)
+        agents, va = _impact_mix(latent, slope)
         sim = Simulation(agents=agents, seed=seed + t)
         for _ in sim.run(warmup):
             pass
@@ -466,4 +471,90 @@ def engine_facts(n: int = 20_000):
         "inserts_per_s": int(n / insert_s) if insert_s else 0,
         "matches_per_s": int((n // 4) / match_s) if match_s else 0,
         "trades": hits,
+    }
+
+
+# ---------------------------------------------------------------------------
+# The live market. Not an experiment: an engine you can stand in front of.
+# ---------------------------------------------------------------------------
+
+_LIVE = None
+_LIVE_T = 0
+_LIVE_SEEN = 0
+
+KINDS = {1: "noise", 2: "noise", 3: "noise", 4: "noise",
+         5: "chaser", 6: "maker", 7: "maker", 8: "value"}
+
+
+def live_new(noise: int = 2, chaser: bool = True, makers: int = 1,
+             value: bool = True, half_spread: float = 0.4,
+             maker_latency: float = 0.0, slope: float = 2.0, seed: int = 5):
+    """Build a market to the caller's spec and hold it open.
+
+    Every argument here is something the page exposes, because a demo whose
+    knobs are decoration is worse than one with no knobs. Changing any of them
+    rebuilds the market from tick zero.
+    """
+    global _LIVE, _LIVE_T, _LIVE_SEEN
+    agents = []
+    for i in range(max(0, min(4, int(noise)))):
+        agents.append(NoiseAgent(agent_id=1 + i, intensity=0.55 + 0.05 * i,
+                                 spread_offset=0.6, qty=8,
+                                 market_order_rate=0.25))
+    if chaser:
+        agents.append(MomentumAgent(agent_id=5, lookback=20, threshold=0.5,
+                                    qty=5, max_position=100))
+    for j in range(max(0, min(2, int(makers)))):
+        agents.append(MarketMakerAgent(
+            agent_id=6 + j, half_spread=half_spread + 0.05 * j, qty=12,
+            inv_skew=0.02,
+            latency=ConstantLatency(maker_latency) if maker_latency > 0 else None))
+    if value and slope > 0:
+        agents.append(ValueAgent(agent_id=8, value=100.0, slope=slope))
+    _LIVE = Simulation(agents=agents, seed=int(seed))
+    _LIVE_T = 0
+    _LIVE_SEEN = 0
+    return {"agents": [{"id": a.id, "kind": KINDS.get(a.id, "?")} for a in agents]}
+
+
+def live_step(n: int = 20, depth: int = 14, max_trades: int = 24):
+    """Advance the market and report what changed.
+
+    Deliberately compact: this crosses the WebAssembly boundary as JSON on
+    every animation frame, so it carries a bounded slice of the book and only
+    the prints since the last call.
+    """
+    global _LIVE_T, _LIVE_SEEN
+    if _LIVE is None:
+        return None
+    for _ in range(int(n)):
+        _LIVE.step(ts=float(_LIVE_T))
+        _LIVE_T += 1
+
+    def side(s):
+        out = []
+        for i, lvl in enumerate(_LIVE.book.iter_levels(s)):
+            if i >= depth:
+                break
+            out.append([round(lvl.price, 2), lvl.total_qty])
+        return out
+
+    total = len(_LIVE.tape)
+    fresh = min(total - _LIVE_SEEN, max_trades)
+    _LIVE_SEEN = total
+    trades = [[round(t.price, 2), t.qty, 1 if t.aggressor is Side.BUY else -1]
+              for t in (_LIVE.tape.recent(fresh) if fresh > 0 else [])]
+    pnl = Analytics(metrics=_LIVE.metrics, tape=_LIVE.tape,
+                    agents=_LIVE.agents).agent_pnl()
+    return {
+        "t": _LIVE_T,
+        "bid": side(Side.BUY),
+        "ask": side(Side.SELL),
+        "mid": round(_LIVE.book.mid, 3) if _LIVE.book.mid is not None else None,
+        "spread": (round(_LIVE.book.spread, 3)
+                   if _LIVE.book.spread is not None else None),
+        "trades": trades,
+        "n_trades": total,
+        "agents": [{"id": a.id, "kind": KINDS.get(a.id, "?"), "inv": a.inventory,
+                    "pnl": round(pnl[a.id]["pnl_mtm"], 1)} for a in _LIVE.agents],
     }

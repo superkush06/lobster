@@ -137,6 +137,35 @@
   @keyframes drift { 0%,100% { transform: translateY(0); opacity: .55 }
                      50% { transform: translateY(5px); opacity: 1 } }
 
+  /* ---- the live market ------------------------------------------------- */
+  .knobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+           gap: 1.5rem 2.4rem; margin-top: 1.9rem }
+  .knob .lab { display: flex; justify-content: space-between; align-items: baseline;
+               margin-bottom: .75rem }
+  .knob .lab b, .knob .lab i {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-style: normal;
+    font-weight: 500; font-size: .69rem; text-transform: uppercase;
+    letter-spacing: .085em }
+  .knob .lab b { color: var(--quiet) }
+  .knob .lab i { color: var(--ink) }
+  .seg { display: flex; gap: 5px }
+  .seg button { font-family: "IBM Plex Mono", Menlo, monospace; font-size: .72rem;
+                font-weight: 500; padding: .34rem .62rem; cursor: pointer;
+                background: none; color: var(--quiet);
+                border: 1px solid var(--hair); border-radius: 3px;
+                transition: all .12s ease }
+  .seg button:hover { border-color: var(--quiet); color: var(--ink) }
+  .seg button.on { background: var(--ink); border-color: var(--ink); color: var(--paper) }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.2rem, 1fr));
+           gap: 1px; background: var(--hair); border: 1px solid var(--hair);
+           margin-top: 1.6rem }
+  .tile { background: var(--paper); padding: .68rem .8rem }
+  .tile span { display: block; font-family: "IBM Plex Mono", Menlo, monospace;
+               font-size: .6rem; text-transform: uppercase; letter-spacing: .085em;
+               color: var(--quiet); margin-bottom: .26rem }
+  .tile b { font-family: "IBM Plex Mono", Menlo, monospace; font-size: 1.02rem;
+            font-weight: 500; color: var(--ink) }
+
   /* ---- an experiment opens ---------------------------------------------- */
   .open { margin-top: 7rem; padding-top: 2.4rem; border-top: 2px solid var(--ink) }
   .sect-first { margin-top: 3.2rem }
@@ -200,6 +229,7 @@
 <body>
 
 <nav aria-label="Contents">
+  <a href="#live"><i>00</i>Live</a>
   <a href="#one"><i>01</i>Queue</a>
   <a href="#two"><i>02</i>Impact</a>
   <a href="#three"><i>03</i>Tape</a>
@@ -209,19 +239,83 @@
 <div id="prog"></div>
 
 <header class="text hero">
-  <span class="m">Four experiments on one order book</span>
+  <span class="m">lobster &nbsp;::&nbsp; stock exchange simulation &nbsp;::&nbsp; four experiments &amp; a live market</span>
   <h1>Latency buys<br>queue position</h1>
   <p class="dek">Two market makers post the same price. One sits closer to the exchange.
     Nothing else about them differs. Everything below is computed here, in this tab, by a
     matching engine compiled to WebAssembly.</p>
   <div class="banner">
+    <span><b>00</b> &nbsp;Live market</span>
     <span><b>01</b> &nbsp;The queue</span>
     <span><b>02</b> &nbsp;Impact</span>
     <span><b>03</b> &nbsp;The tape</span>
     <span><b>04</b> &nbsp;The book</span>
   </div>
-  <span class="cue">Scroll &#8595;</span>
+  <span class="cue">Scroll to the live market &#8595;</span>
 </header>
+
+<div class="text open sect-first" id="live">
+  <div class="onum">00</div>
+  <span class="m">Live market &middot; running now</span>
+  <h2>The whole engine, in one panel</h2>
+  <p class="thesis">A market with no question attached. Change who is in it and watch the book
+    change shape underneath you.</p>
+  <p>Every band below is a resting queue at one price, brighter where more size is waiting,
+    with time running left to right. The line threading through is the mid, and the marks are
+    prints: above the line a buyer crossed the spread, below it a seller did. Nothing here is a
+    recording. The engine is stepping in this tab, and every control rebuilds the market from
+    tick zero.</p>
+</div>
+
+<div class="wide">
+  <figure><canvas id="live-canvas"></canvas></figure>
+
+  <div class="tiles" id="liveTiles"></div>
+
+  <div class="knobs">
+    <div class="knob">
+      <div class="lab"><b>Noise traders</b><i id="vNoise">2</i></div>
+      <div class="seg" id="segNoise"></div>
+    </div>
+    <div class="knob">
+      <div class="lab"><b>Momentum chaser</b><i id="vChaser">on</i></div>
+      <div class="seg" id="segChaser"></div>
+    </div>
+    <div class="knob">
+      <div class="lab"><b>Market makers</b><i id="vMakers">1</i></div>
+      <div class="seg" id="segMakers"></div>
+    </div>
+    <div class="knob">
+      <div class="lab"><b>Latent liquidity</b><i id="vSlope">2.0</i></div>
+      <div class="sl" id="slSlope" tabindex="0" role="slider"
+           aria-label="Latent liquidity ladder slope" aria-valuemin="0" aria-valuemax="6">
+        <div class="trk"></div><div class="fil"></div><div class="knb"></div>
+      </div>
+    </div>
+    <div class="knob">
+      <div class="lab"><b>Maker half-spread</b><i id="vHS">0.40</i></div>
+      <div class="sl" id="slHS" tabindex="0" role="slider"
+           aria-label="Market maker half spread" aria-valuemin="0.05" aria-valuemax="1">
+        <div class="trk"></div><div class="fil"></div><div class="knb"></div>
+      </div>
+    </div>
+    <div class="knob">
+      <div class="lab"><b>Maker wire delay</b><i id="vLat">0.00</i></div>
+      <div class="sl" id="slLat" tabindex="0" role="slider"
+           aria-label="Market maker wire delay" aria-valuemin="0" aria-valuemax="0.5">
+        <div class="trk"></div><div class="fil"></div><div class="knb"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <span><button class="m" id="livePlay">&#10073;&#10073; pause</button>
+      &nbsp;&nbsp;<button class="m" id="liveReset">&#8635; restart</button></span>
+    <span class="m" id="liveState">starting</span>
+  </div>
+</div>
+<div class="text"><p class="said" id="sLive"></p></div>
+<div class="endrule"><div></div></div>
 
 <div class="text open sect-first" id="one">
   <div class="onum">01</div>
@@ -346,10 +440,11 @@
   <figure><canvas id="impact"></canvas></figure>
 
   <div class="rig">
-    <div class="ctl" style="flex:0 1 22rem">
-      <div class="lab"><b id="latLab">Latent liquidity</b><i id="latVal">present</i></div>
-      <div class="sl sw" id="slLatent" tabindex="0" role="switch" aria-checked="true"
-           aria-label="Latent liquidity in the book">
+    <div class="ctl" style="flex:0 1 24rem">
+      <div class="lab"><b>Latent liquidity, shares per rung</b><i id="latVal">2.00</i></div>
+      <div class="sl" id="slLatent" tabindex="0" role="slider"
+           aria-label="Latent liquidity ladder slope"
+           aria-valuemin="0" aria-valuemax="3" aria-valuenow="2">
         <div class="trk"></div><div class="fil"></div><div class="knb"></div>
       </div>
     </div>
@@ -494,7 +589,7 @@ const MONO = (px, w) => `${w || 400} ${px}px "IBM Plex Mono", Menlo, monospace`;
 
 let py = null, D = null, S = null, busy = false, pending = false;
 let playing = true, frame = 0, lastT = 0;
-let IMP = null, TAPE = null, latent = true;
+let IMP = null, TAPE = null, impSlope = 2.0;
 let runs = 0;
 const tally = () => { const e = $("#runCount"); if (e) e.textContent = runs; };
 
@@ -502,9 +597,11 @@ const tally = () => { const e = $("#runCount"); if (e) e.textContent = runs; };
 // goes through here so a slider drag cannot land in the middle of the impact
 // sweep.
 let pyQueue = Promise.resolve();
+let pyPending = 0;
 function pyRun(code) {
+  pyPending += 1;
   const job = pyQueue.then(() => py.runPythonAsync(code));
-  pyQueue = job.catch(() => {});
+  pyQueue = job.catch(() => {}).finally(() => { pyPending -= 1; });
   return job;
 }
 const pyJSON = async (expr) => JSON.parse(await pyRun(`import json; json.dumps(${expr})`));
@@ -689,10 +786,10 @@ function drawMark() {
    difference between concave and convex is a difference you can see rather
    than a number you have to trust. */
 function drawImpact() {
-  const { c, w, h } = ctx($("#impact"), 320);
-  if (!IMP || !IMP.on.costs.length) return;
-  const L = 60, R = 158, T = 30, B = 44;
-  const all = IMP.on.costs.concat(IMP.off.costs).filter((v) => v > 0);
+  const { c, w, h } = ctx($("#impact"), 340);
+  if (!IMP || !IMP.curves.length) return;
+  const L = 60, R = 172, T = 30, B = 44;
+  const all = IMP.curves.flatMap((x) => x.costs).filter((v) => v > 0);
   if (!all.length) return;
   const xs = SIZES_IMP;
   const lx0 = Math.log10(xs[0]), lx1 = Math.log10(xs[xs.length - 1]);
@@ -702,7 +799,7 @@ function drawImpact() {
   const Y = (v) => T + (1 - (Math.log10(v) - ly0) / (ly1 - ly0)) * (h - T - B);
 
   c.font = MONO(10, 500); c.textBaseline = "middle";
-  for (let e = ly0; e <= ly1; e++) {            // decade gridlines
+  for (let e = ly0; e <= ly1; e++) {
     c.strokeStyle = INK; c.globalAlpha = .1; c.lineWidth = 1;
     c.beginPath(); c.moveTo(L, Y(10 ** e) + .5); c.lineTo(w - R, Y(10 ** e) + .5); c.stroke();
     c.globalAlpha = 1; c.fillStyle = QUIET; c.textAlign = "right";
@@ -714,9 +811,9 @@ function drawImpact() {
   xs.forEach((q) => c.fillText(String(q), X(q), h - 24));
   c.fillText("→  PARENT ORDER, LOTS", (L + w - R) / 2, h - 8);
 
-  // a true square root, anchored on the first point, for the eye to compare to
-  const a = IMP.on.costs[0];
-  if (a > 0) {
+  const cur = IMP.curves[IMP.i];
+  const a = cur && cur.costs.length ? cur.costs[0] : all[0];
+  if (a > 0) {                       // a true square root, for the eye
     c.strokeStyle = INK; c.globalAlpha = .3; c.setLineDash([4, 4]); c.lineWidth = 1;
     c.beginPath();
     xs.forEach((q, i) => {
@@ -725,33 +822,31 @@ function drawImpact() {
     });
     c.stroke(); c.setLineDash([]); c.globalAlpha = 1;
     const mid = Math.floor(xs.length / 2);
-    c.fillStyle = QUIET; c.textAlign = "center"; c.font = MONO(10, 500);
+    c.fillStyle = QUIET; c.textAlign = "center";
     c.fillText("EXACTLY √Q", X(xs[mid]), Y(a * Math.sqrt(xs[mid] / xs[0])) + 22);
   }
 
-  [["off", SLOW, "NO LATENT LIQUIDITY"], ["on", FAST, "LATENT LIQUIDITY"]]
-    .forEach(([key, col, name]) => {
-      const ser = IMP[key];
-      if (!ser.costs.length) return;
-      const live = (key === "on") === latent;
-      c.globalAlpha = live ? 1 : .28;
-      c.strokeStyle = col; c.fillStyle = col; c.lineWidth = live ? 2.5 : 1.5;
-      c.beginPath();
-      ser.costs.forEach((v, i) => (i ? c.lineTo(X(xs[i]), Y(v)) : c.moveTo(X(xs[i]), Y(v))));
-      c.stroke();
-      ser.costs.forEach((v, i) => {
-        c.beginPath(); c.arc(X(xs[i]), Y(v), live ? 4 : 3, 0, 7); c.fill();
-      });
-      const last = ser.costs.length - 1;
-      c.textAlign = "left"; c.font = MONO(11, 500);
-      c.fillText(name, X(xs[last]) + 10, Y(ser.costs[last]) - 9);
-      if (ser.fit) {
-        c.font = MONO(15, 500);
-        c.fillText("Q" + sup(ser.fit.exponent.toFixed(2)),
-                   X(xs[last]) + 10, Y(ser.costs[last]) + 10);
-      }
-      c.globalAlpha = 1;
+  // every slope the reader has asked for, the live one solid
+  IMP.curves.forEach((ser, k) => {
+    if (!ser.costs.length) return;
+    const live = k === IMP.i;
+    const col = ser.slope <= 0 ? SLOW : FAST;
+    c.globalAlpha = live ? 1 : .22;
+    c.strokeStyle = col; c.fillStyle = col; c.lineWidth = live ? 2.6 : 1.3;
+    c.beginPath();
+    ser.costs.forEach((v, i) => (i ? c.lineTo(X(xs[i]), Y(v)) : c.moveTo(X(xs[i]), Y(v))));
+    c.stroke();
+    if (live) ser.costs.forEach((v, i) => {
+      c.beginPath(); c.arc(X(xs[i]), Y(v), 4, 0, 7); c.fill();
     });
+    if (ser.fit && ser.costs.length === xs.length) {
+      c.textAlign = "left"; c.font = MONO(live ? 11.5 : 10, 500);
+      c.fillText(`${ser.slope.toFixed(2)} → Q^${ser.fit.exponent.toFixed(2)}`,
+                 w - R + 10, Y(ser.costs[ser.costs.length - 1]));
+      c.font = MONO(10, 500);
+    }
+    c.globalAlpha = 1;
+  });
 }
 const sup = (t) => t.split("").map((ch) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[ch] || (ch === "." ? "·" : ch)).join("");
 
@@ -909,7 +1004,7 @@ async function computeWalk() {
 
 async function refreshWalk() {
   walkRes = await pyJSON(`sim.walk(${walkQty})`);
-  drawWalk(); sayWalk(); fillScore();
+  drawWalk(); drawLive(); sayWalk(); fillScore();
 }
 
 function sayWalk() {
@@ -935,6 +1030,170 @@ function sayWalk() {
      of the figure.`;
 }
 
+
+/* ===== 00 · the live market ===============================================
+   A scrolling depth heatmap: one column per frame, time to the right, price
+   up. Hue is the side and brightness is resting size on a gamma-corrected
+   ramp, because depth is heavy-tailed and a linear map puts nearly all of it
+   at the bottom of the scale. The mid threads through and prints sit on top,
+   above the line where a buyer crossed and below where a seller did.      */
+
+const LIVE = {
+  on: false, ready: false, cols: [], max: 1, lo: 99.4, hi: 100.6,
+  cfg: { noise: 2, chaser: true, makers: 1, slope: 2.0, hs: 0.40, lat: 0.0 },
+};
+const LCOLS = 260;
+
+function liveTint(side, v) {
+  const c = side > 0 ? [27, 108, 168] : [192, 95, 27], p = [239, 235, 227];
+  const m = 0.10 + 0.90 * v;
+  return `rgb(${Math.round(p[0] + (c[0] - p[0]) * m)},` +
+         `${Math.round(p[1] + (c[1] - p[1]) * m)},` +
+         `${Math.round(p[2] + (c[2] - p[2]) * m)})`;
+}
+
+function drawLive() {
+  const H = 320;
+  const { c, w } = ctx($("#live-canvas"), H);
+  const padL = 56, padR = 12, top = 24, bot = 22;
+  const pw = w - padL - padR, ph = H - top - bot;
+  c.fillStyle = "#EFEBE3"; c.fillRect(padL, top, pw, ph);
+  if (!LIVE.cols.length) {
+    c.fillStyle = QUIET; c.font = MONO(11, 500); c.textAlign = "center";
+    c.textBaseline = "middle"; c.fillText("warming up", padL + pw / 2, top + ph / 2);
+    return;
+  }
+  const { lo, hi } = LIVE;
+  const Y = (px) => top + (1 - (px - lo) / (hi - lo)) * ph;
+  const cw = pw / LCOLS;
+  const cellH = Math.max(1.2, (0.01 / (hi - lo)) * ph);
+  const xAt = (i) => padL + (LCOLS - LIVE.cols.length + i) * cw;
+
+  LIVE.cols.forEach((col, i) => {
+    const x = xAt(i);
+    for (const [px, q] of col.bid) {
+      c.fillStyle = liveTint(1, Math.pow(Math.min(1, q / LIVE.max), 0.65));
+      c.fillRect(x, Y(px) - cellH / 2, Math.max(1, cw + .6), cellH);
+    }
+    for (const [px, q] of col.ask) {
+      c.fillStyle = liveTint(-1, Math.pow(Math.min(1, q / LIVE.max), 0.65));
+      c.fillRect(x, Y(px) - cellH / 2, Math.max(1, cw + .6), cellH);
+    }
+  });
+
+  c.strokeStyle = "#4A453C"; c.lineWidth = 1.1; c.beginPath();
+  let started = false;
+  LIVE.cols.forEach((col, i) => {
+    if (col.mid == null) return;
+    const x = xAt(i) + cw / 2;
+    started ? c.lineTo(x, Y(col.mid)) : (c.moveTo(x, Y(col.mid)), started = true);
+  });
+  c.stroke();
+
+  LIVE.cols.forEach((col, i) => {
+    const x = xAt(i) + cw / 2;
+    for (const [px, q, sgn] of col.tr) {
+      c.fillStyle = sgn > 0 ? "#12507E" : "#8E4413";
+      c.beginPath();
+      c.arc(x, Y(px) + (sgn > 0 ? -2.5 : 2.5), Math.min(3.4, 1 + Math.sqrt(q) * .34), 0, 7);
+      c.fill();
+    }
+  });
+
+  c.font = MONO(9.5, 500); c.textBaseline = "middle"; c.fillStyle = QUIET;
+  c.textAlign = "right";
+  for (let k = 0; k <= 4; k++) {
+    const px = lo + (hi - lo) * (k / 4);
+    c.fillText(px.toFixed(2), padL - 8, Y(px));
+  }
+  c.textAlign = "left"; c.fillStyle = FAST; c.fillText("BID DEPTH", padL, 11);
+  c.fillStyle = SLOW; c.fillText("ASK DEPTH", padL + 68, 11);
+  c.fillStyle = QUIET; c.textAlign = "right";
+  c.fillText(`TICK ${LIVE.cols[LIVE.cols.length - 1].t.toLocaleString()}`, w - padR, 11);
+  c.textAlign = "left"; c.fillText("TIME →", padL, H - 8);
+}
+
+function liveTiles(f) {
+  $("#liveTiles").innerHTML = [
+    ["Mid", f.mid == null ? "—" : f.mid.toFixed(2)],
+    ["Spread", f.spread == null ? "—" : f.spread.toFixed(3)],
+    ["Trades", f.n_trades.toLocaleString()],
+    ["Tick", f.t.toLocaleString()],
+  ].concat(f.agents.map((a) => [`${a.kind} ${a.id}`,
+    `${a.inv >= 0 ? "+" : ""}${a.inv}`]))
+   .map(([k, v]) => `<div class="tile"><span>${k}</span><b>${v}</b></div>`).join("");
+}
+
+function livePush(f) {
+  LIVE.cols.push({ t: f.t, bid: f.bid, ask: f.ask, mid: f.mid, tr: f.trades });
+  if (LIVE.cols.length > LCOLS) LIVE.cols.shift();
+  for (const [, q] of f.bid.concat(f.ask)) if (q > LIVE.max) LIVE.max = q;
+  let lo = Infinity, hi = -Infinity;
+  for (const col of LIVE.cols) {
+    for (const [px] of col.bid.concat(col.ask)) {
+      if (px < lo) lo = px;
+      if (px > hi) hi = px;
+    }
+  }
+  if (lo < hi) {                       // ease the window so it does not jitter
+    const pad = (hi - lo) * .06 + .02;
+    LIVE.lo += ((lo - pad) - LIVE.lo) * .09;
+    LIVE.hi += ((hi + pad) - LIVE.hi) * .09;
+  }
+}
+
+async function liveBuild() {
+  const g = LIVE.cfg;
+  LIVE.ready = false; LIVE.cols = []; LIVE.max = 1;
+  $("#liveState").textContent = "building";
+  await pyRun(`sim.live_new(noise=${g.noise}, chaser=${g.chaser ? "True" : "False"}, ` +
+              `makers=${g.makers}, value=${g.slope > 0 ? "True" : "False"}, ` +
+              `half_spread=${g.hs}, maker_latency=${g.lat}, slope=${g.slope || 0.1})`);
+  const f = await pyJSON("sim.live_step(120)");
+  LIVE.lo = (f.mid || 100) - .6; LIVE.hi = (f.mid || 100) + .6;
+  livePush(f); liveTiles(f); sayLive(f);
+  LIVE.ready = true; drawLive();
+}
+
+function sayLive(f) {
+  const g = LIVE.cfg, who = [];
+  if (g.noise) who.push(`<span class="n">${g.noise}</span> noise trader${g.noise > 1 ? "s" : ""}`);
+  if (g.chaser) who.push("a momentum chaser");
+  if (g.makers) who.push(`<span class="n">${g.makers}</span> market maker${g.makers > 1 ? "s" : ""}`);
+  if (g.slope > 0) who.push("a value trader laddering passive size");
+  $("#sLive").innerHTML =
+    `In the book right now: ${who.length ? who.join(", ") : "nobody at all"}. The spread is
+     <span class="n">${f.spread == null ? "—" : f.spread.toFixed(3)}</span> and
+     <span class="n">${f.n_trades.toLocaleString()}</span> trades have printed. Take the makers
+     out and nothing holds the spread; take the value trader out and the depth behind the touch
+     thins to whatever the noise leaves lying around.`;
+}
+
+async function liveTick() {
+  if (!LIVE.on || !LIVE.ready || document.hidden) return;
+  const f = await pyJSON("sim.live_step(14)");
+  if (!f) return;
+  livePush(f); drawLive(); liveTiles(f);
+  $("#liveState").textContent = `${f.n_trades.toLocaleString()} trades`;
+}
+
+function liveSetPlay() {
+  $("#livePlay").innerHTML = LIVE.on ? "&#10073;&#10073; pause" : "&#9654; play";
+}
+
+function seg(host, opts, get, set) {
+  const paint = () => [...host.children].forEach((b, i) =>
+    b.classList.toggle("on", opts[i][1] === get()));
+  host.innerHTML = "";
+  for (const [label, val] of opts) {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.addEventListener("click", () => { set(val); paint(); });
+    host.appendChild(b);
+  }
+  paint();
+}
+
 /* the closing scorecard, filled in as each experiment lands */
 const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
 const SCORE = [
@@ -946,10 +1205,14 @@ const SCORE = [
       const d = S.markout_fast.map((x, i) => x - S.markout_slow[i]);
       return `${d.filter((x) => x > 0).length} of ${d.length}`;
     }, "no reliable edge either way"],
-  ["02", "Cost exponent, latent liquidity on", () => IMP.on.fit
-      ? IMP.on.fit.exponent.toFixed(2) : null, "0.5 to 0.6 (Almgren, Gatheral)"],
-  ["02", "Cost exponent, latent liquidity off", () => IMP.off.fit
-      ? IMP.off.fit.exponent.toFixed(2) : null, "above 1 is the wrong curvature"],
+  ["02", "Cost exponent at the chosen slope", () => {
+      const c = IMP && IMP.curves[IMP.i];
+      return c && c.fit ? `Q^${c.fit.exponent.toFixed(2)}` : null;
+    }, "0.5 to 0.6 (Almgren, Gatheral)"],
+  ["02", "Cost exponent with no latent liquidity", () => {
+      const z = IMP && IMP.curves.find((x) => x.slope === 0);
+      return z && z.fit ? `Q^${z.fit.exponent.toFixed(2)}` : null;
+    }, "above 1 is the wrong curvature"],
   ["03", "Excess kurtosis of returns", () => TAPE ? TAPE.kurtosis.toFixed(1) : null,
       "positive and large (Cont)"],
   ["03", "Hill tail index", () => TAPE && TAPE.tail_index
@@ -1178,49 +1441,58 @@ const num = (x, d = 4) => `<span class="n">${x.toFixed(d)}</span>`;
 
 async function computeImpact() {
   if (IMP) return;
-  IMP = { on: { costs: [], fit: null }, off: { costs: [], fit: null } };
+  IMP = { curves: [], i: 0 };
   SIZES_IMP = await pyJSON("list(sim.IMPACT_SIZES)");
-  for (const key of ["on", "off"]) {
-    const flag = key === "on" ? "True" : "False";
-    for (const q of SIZES_IMP) {
-      $("#impNote").textContent =
-        `${key === "on" ? "with" : "without"} latent liquidity · ${q} lots`;
-      const v = await pyJSON(`sim.impact_point(${q}, latent=${flag})`);
-      if (v !== null) IMP[key].costs.push(v);
-      drawImpact();
-      await yieldToPaint();
-    }
-    IMP[key].fit = await pyJSON(
-      `sim.impact_fit(list(sim.IMPACT_SIZES)[:${IMP[key].costs.length}], `
-      + `${JSON.stringify(IMP[key].costs)})`);
-    drawImpact(); sayImpact(); fillScore();
+  await impactAt(0);              // no ladder at all
+  await impactAt(impSlope);       // and wherever the handle is sitting
+}
+
+// One whole cost curve at one ladder slope. Every point is a fresh set of
+// parent orders worked into a fresh market, which is why this takes seconds
+// instead of being a lookup, and why the slider is not a switch.
+async function impactAt(slope) {
+  const hit = IMP.curves.findIndex((x) => Math.abs(x.slope - slope) < 1e-9);
+  if (hit >= 0) { IMP.i = hit; drawImpact(); sayImpact(); return; }
+  const ser = { slope, costs: [], fit: null };
+  IMP.curves.push(ser); IMP.i = IMP.curves.length - 1;
+  for (const q of SIZES_IMP) {
+    $("#impNote").textContent = `slope ${slope.toFixed(2)} · ${q} lots`;
+    const v = await pyJSON(`sim.impact_point(${q}, latent=${slope > 0 ? "True" : "False"}` +
+                           `, slope=${slope || 0.1})`);
+    if (v !== null) ser.costs.push(v);
+    drawImpact();
+    await yieldToPaint();
   }
-  $("#impNote").textContent = `${SIZES_IMP.length * 2 * 3} parent orders worked`;
-  runs += SIZES_IMP.length * 2 * 3;
-  tally();
+  ser.fit = await pyJSON(
+    `sim.impact_fit(list(sim.IMPACT_SIZES)[:${ser.costs.length}], ` +
+    `${JSON.stringify(ser.costs)})`);
+  runs += SIZES_IMP.length * 3; tally();
+  $("#impNote").textContent =
+    `${IMP.curves.length} slope${IMP.curves.length > 1 ? "s" : ""} measured`;
+  $("#impState").textContent = ser.fit ? `exponent ${ser.fit.exponent.toFixed(2)}` : "";
+  drawImpact(); sayImpact(); fillScore();
 }
 
 function sayImpact() {
-  if (!IMP || !IMP.on.fit) return;
-  const on = IMP.on.fit.exponent, off = IMP.off.fit && IMP.off.fit.exponent;
-  const last = SIZES_IMP[SIZES_IMP.length - 1];
-  const cOn = IMP.on.costs[IMP.on.costs.length - 1];
-  const cOff = IMP.off.costs.length === SIZES_IMP.length
-    ? IMP.off.costs[IMP.off.costs.length - 1] : null;
-  $("#impState").textContent = latent ? `exponent ${on.toFixed(2)}`
-    : (off !== null ? `exponent ${off.toFixed(2)}` : "");
-  $("#sImpact").innerHTML = latent
-    ? `Cost fits <span class="n">Q<sup>${on.toFixed(2)}</sup></span>, which is the square-root
-       law: the published range is <span class="n">0.5</span> to <span class="n">0.6</span>.
-       The line bends <em>down</em> on a log-log plot, so the hundredth lot costs less than the
-       first.`
-    : (cOff === null ? "Running the same sizes without it."
-      : `Now cost fits <span class="n">Q<sup>${off.toFixed(2)}</sup></span>. The exponent is
-         above one, so the line bends <em>up</em>: every extra lot costs more than the last.
-         At <span class="n">${last.toLocaleString()}</span> lots that is
-         ${num(cOff)} a share against ${num(cOn)} with the ladder present, a factor of
-         <span class="n">${(cOff / cOn).toFixed(0)}×</span>. This is the version of the
-         simulator that could not reproduce the law, and the switch is the whole difference.`);
+  if (!IMP || !IMP.curves.length) return;
+  const cur = IMP.curves[IMP.i];
+  if (!cur.fit) return;
+  const zero = IMP.curves.find((x) => x.slope === 0);
+  const e = cur.fit.exponent;
+  const band = e >= 0.4 && e <= 0.7;
+  const tried = IMP.curves.filter((x) => x.fit).length;
+  $("#sImpact").innerHTML =
+    `At a ladder slope of <span class="n">${cur.slope.toFixed(2)}</span> the fit is
+     <span class="n">Q^${e.toFixed(2)}</span>, ${band ? "inside" : "outside"} the
+     <span class="n">0.5</span> to <span class="n">0.6</span> the literature reports.
+     ${zero && zero.fit ? `Strip the ladder out entirely and the same measurement returns
+       <span class="n">Q^${zero.fit.exponent.toFixed(2)}</span>: convex, the wrong sign of
+       curvature.` : ""}
+     ${tried > 2 ? `Across the <span class="n">${tried}</span> slopes measured so far the
+       change is abrupt rather than gradual, so a little latent depth buys nearly all of the
+       concavity and piling on more barely moves the exponent.`
+      : `Move the handle anywhere else and the whole curve is measured again from scratch,
+         five parent orders at a time.`}`;
 }
 
 async function computeTape() {
@@ -1318,24 +1590,64 @@ document.fonts.ready.then(redraw);
     // Revalidate both. The page and the engine it runs are separate files, and
     // a visitor holding a cached bundle from a previous deploy alongside fresh
     // HTML gets an ImportError for whatever was added since.
-    const fresh = { cache: "no-cache" };
+    // One tiny always-fresh file names the bundle; the bundle is then fetched
+    // at a URL that changes whenever its bytes do. Revalidation alone is not
+    // enough, and a stale zip against fresh HTML is an ImportError from deep
+    // inside Pyodide with nothing pointing at the cause.
+    const fresh = { cache: "no-store" };
+    const stamp = await (await fetch("bundle.json", fresh)).json();
+    const v = `?v=${stamp.sha}`;
     py.unpackArchive(
-      await (await fetch("lobster-pkg.zip", fresh)).arrayBuffer(), "zip");
-    py.FS.writeFile("sim.py", await (await fetch("sim.py", fresh)).text());
+      await (await fetch("lobster-pkg.zip" + v, fresh)).arrayBuffer(), "zip");
+    py.FS.writeFile("sim.py", await (await fetch("sim.py" + v, fresh)).text());
     await py.runPythonAsync("import sys; sys.path.insert(0,'.')\nimport sim");
     slider($("#slFast"), $("#vFast"), .02, .30, vFast, FAST, (v) => { vFast = v; simulate(); });
     slider($("#slSlow"), $("#vSlow"), .02, .30, vSlow, SLOW, (v) => { vSlow = v; simulate(); });
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
       playing = false; $("#play").innerHTML = "&#9654; play";
     }
-    toggle($("#slLatent"), true, FAST, (on) => {
-      latent = on;
-      $("#latVal").textContent = on ? "present" : "removed";
-      $("#slLatent").style.color = on ? FAST : SLOW;
-      [".trk", ".fil", ".knb"].forEach((q) =>
-        ($("#slLatent").querySelector(q).style.background = on ? FAST : SLOW));
-      drawImpact(); sayImpact();
+    // Not a switch: every position is a slope the engine measures from scratch.
+    slider($("#slLatent"), $("#latVal"), 0, 3, impSlope, FAST, (v) => {
+      impSlope = v;
+      if (IMP) impactAt(v);
     });
+
+    // ---- 00 · the live market ----
+    const rebuild = () => { LIVE.ready = false; liveBuild(); };
+    seg($("#segNoise"), [["0", 0], ["1", 1], ["2", 2], ["3", 3], ["4", 4]],
+      () => LIVE.cfg.noise,
+      (x) => { LIVE.cfg.noise = x; $("#vNoise").textContent = x; rebuild(); });
+    seg($("#segChaser"), [["off", false], ["on", true]], () => LIVE.cfg.chaser,
+      (x) => { LIVE.cfg.chaser = x; $("#vChaser").textContent = x ? "on" : "off"; rebuild(); });
+    seg($("#segMakers"), [["0", 0], ["1", 1], ["2", 2]], () => LIVE.cfg.makers,
+      (x) => { LIVE.cfg.makers = x; $("#vMakers").textContent = x; rebuild(); });
+    slider($("#slSlope"), $("#vSlope"), 0, 6, LIVE.cfg.slope, FAST,
+      (x) => { LIVE.cfg.slope = x; rebuild(); }, (x) => x.toFixed(1));
+    slider($("#slHS"), $("#vHS"), .05, 1, LIVE.cfg.hs, SLOW,
+      (x) => { LIVE.cfg.hs = x; rebuild(); });
+    slider($("#slLat"), $("#vLat"), 0, .5, LIVE.cfg.lat, "#7A7264",
+      (x) => { LIVE.cfg.lat = x; rebuild(); });
+    $("#livePlay").addEventListener("click", () => { LIVE.on = !LIVE.on; liveSetPlay(); });
+    $("#liveReset").addEventListener("click", rebuild);
+    liveSetPlay();
+    new IntersectionObserver((es) => {
+      const vis = es[0].isIntersecting;
+      if (vis && !LIVE.ready) liveBuild();
+      LIVE.on = vis && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+      liveSetPlay();
+    }, { rootMargin: "120px" }).observe($("#live-canvas"));
+    // Pyodide runs on this thread, so a market stepping flat out starves the
+    // page and everything queued behind it. Pace it on a timer (a frame
+    // callback stalls outright in a hidden tab) and skip a beat whenever real
+    // work is waiting.
+    (async function pump() {
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 90));
+        if (LIVE.on && LIVE.ready && !document.hidden && pyPending === 0) {
+          try { await liveTick(); } catch (e) { /* a rebuild raced us */ }
+        }
+      }
+    })();
     await simulate();
     requestAnimationFrame(loop);
     watch("#impact", computeImpact);
