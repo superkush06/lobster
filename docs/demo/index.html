@@ -94,7 +94,7 @@
 <body>
 
 <header class="text">
-  <span class="m">Lobster · limit order book</span>
+  <span class="m">An experiment in price–time priority</span>
   <h1>Latency buys<br>queue position</h1>
   <p class="dek">Two market makers post the same price. One sits closer to the exchange.
     Nothing else about them differs.</p>
@@ -181,11 +181,12 @@
   <p id="close"></p>
 
   <footer>
-    Every number here is computed by <a href="https://github.com/superkush06/lobster">lobster</a>'s
-    matching engine: the Python package itself, compiled to WebAssembly and running in this tab
-    rather than reimplemented in JavaScript. The driver the page calls into is
-    <a href="https://github.com/superkush06/lobster/blob/main/docs/demo/sim.py">sim.py</a>, about
-    ninety lines. Nothing here is precomputed; move a handle and the simulation runs again.
+    Thirteen simulations ran in this tab while you read this, on a matching engine
+    compiled to WebAssembly. Nothing above was precomputed, which is why moving a handle
+    costs a few seconds. The engine is
+    <a href="https://github.com/superkush06/lobster">lobster</a>; the ninety lines this page
+    drives it with are
+    <a href="https://github.com/superkush06/lobster/blob/main/docs/demo/sim.py">sim.py</a>.
   </footer>
 </div>
 
@@ -226,7 +227,7 @@ function ctx(cv, h) {
 const ROWS = 8, RH = 32, BH = 20;
 let QMAX = 24;
 function drawLadder() {
-  const { c, w } = ctx($("#ladder"), ROWS * RH + 64);
+  const { c, w } = ctx($("#ladder"), ROWS * RH + 82);
   if (!D) return;
   const rows = D.frames[frame] || [];
   const narrow = w < 460;
@@ -280,10 +281,25 @@ function drawLadder() {
 
   c.strokeStyle = HAIR; c.lineWidth = 1;             // the front-of-queue edge
   c.beginPath(); c.moveTo(padL - .5, top); c.lineTo(padL - .5, top + ROWS * RH); c.stroke();
+
+  // how far through the run we are, and whether it has finished
+  const yBar = top + ROWS * RH + 16, yTxt = yBar + 18;
+  const last = D.frames.length - 1;
+  const done = frame >= last;
+  const played = last ? (frame / last) : 1;
+  c.strokeStyle = HAIR; c.lineWidth = 2; c.lineCap = "butt";
+  c.beginPath(); c.moveTo(padL, yBar); c.lineTo(w - padR, yBar); c.stroke();
+  c.strokeStyle = done ? QUIET : FAST;
+  c.beginPath(); c.moveTo(padL, yBar);
+  c.lineTo(padL + played * (w - padR - padL), yBar); c.stroke();
+
+  const tick = D.frame0_tick + frame * D.frame_every;
+  const lastTick = D.frame0_tick + last * D.frame_every;
   c.fillStyle = QUIET; c.font = MONO(10, 500); c.textAlign = "left";
-  c.fillText("TICK " + (D.frame0_tick + frame * D.frame_every), padL, top + ROWS * RH + 20);
+  c.fillText(`TICK ${tick} OF ${lastTick}`, padL, yTxt);
   c.textAlign = "right";
-  c.fillText("BID SIDE, TOP " + ROWS + " LEVELS", w - padR, top + ROWS * RH + 20);
+  c.fillStyle = done ? INK : QUIET;
+  c.fillText(done ? "RUN COMPLETE" : `BID SIDE, TOP ${ROWS} LEVELS`, w - padR, yTxt);
 }
 
 /* figure 2: front-of-queue share */
@@ -425,6 +441,9 @@ async function simulate() {
   D = JSON.parse(await py.runPythonAsync(
     `import json; json.dumps(sim.run(${f0}, ${s0}))`));
   frame = 0;
+  // a fresh run is a fresh film, so play it unless the reader asked for stillness
+  playing = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  setPlay();
 
   // one size scale for every level and every frame, so bars never rescale mid-play
   QMAX = 1;
@@ -523,16 +542,30 @@ function writeCopy() {
        did.`;
 }
 
+// The film is a finite run, so it stops at the end and says so rather than
+// looping forever and leaving the reader unsure whether anything is still
+// happening.
+const PAUSE = "&#10073;&#10073; pause", PLAY = "&#9654; play",
+      REPLAY = "&#8635; replay";
+
+function setPlay() {
+  $("#play").innerHTML = playing ? PAUSE : (atEnd() ? REPLAY : PLAY);
+}
+const atEnd = () => !!D && frame >= D.frames.length - 1;
+
 function loop(t) {
   if (D && playing && t - lastT > 130) {
-    frame = (frame + 1) % D.frames.length; drawLadder(); lastT = t;
+    if (atEnd()) { playing = false; setPlay(); }
+    else { frame += 1; drawLadder(); }
+    lastT = t;
   }
   requestAnimationFrame(loop);
 }
 
 $("#play").addEventListener("click", () => {
+  if (!playing && atEnd()) frame = 0;      // replay from the top
   playing = !playing;
-  $("#play").innerHTML = playing ? "&#10073;&#10073; pause" : "&#9654; play";
+  setPlay(); drawLadder();
 });
 addEventListener("resize", redraw);
 document.fonts.ready.then(redraw);
