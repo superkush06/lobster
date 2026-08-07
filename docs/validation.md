@@ -14,7 +14,7 @@ python examples/validate.py --quick    # ~4 s, coarser Monte Carlo
 
 The raw output of the run this page was written from is pasted at the
 bottom. Nothing here has been rounded in a flattering direction, and where
-the library loses it says so. Seven of the fourteen rows in Part 2 fail,
+the library loses it says so. Three of the fourteen rows in Part 2 fail,
 either outright or for one of the two agent mixes, and the failures are the
 more useful half of the page.
 
