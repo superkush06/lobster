@@ -175,13 +175,13 @@ def main() -> None:
         "demo mix": measure(args.steps, args.seed, momentum=True),
         "no chaser": measure(args.steps, args.seed, momentum=False),
     }
-    print(f"Stylized-facts scorecard — {args.steps:,} ticks, seed {args.seed}")
+    print(f"Stylized-facts scorecard: {args.steps:,} ticks, seed {args.seed}")
     for name, run in runs.items():
         print(f"\n{name}  ({run.facts.n_trades:,} trades)")
         for fact, verdict, why in grade(run.facts):
             print(f"  {verdict:>6}  {fact:<26} {why}")
 
-    print("\nSpreads — what Roll's estimator recovers from trade prices alone")
+    print("\nSpreads: what Roll's estimator recovers from trade prices alone")
     for name, run in runs.items():
         print(f"\n{name}")
         for label, value in spread_rows(run):

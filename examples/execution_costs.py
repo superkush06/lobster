@@ -160,7 +160,7 @@ def calibrate(trials: int, warmup: int, seed: int) -> tuple[float, float,
         print(f"  {total:>10,}{pi:>16.1%}{gross:>12.4f}{net:>15.4f}")
     fit = fit_power_law(xs, ys)
     if fit is None:
-        raise SystemExit("cost calibration failed — no usable points")
+        raise SystemExit("cost calibration failed: no usable points")
     return fit[0], fit[1], min(xs), max(xs)
 
 
@@ -196,7 +196,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=1000)
     args = ap.parse_args()
 
-    print("Step 1 — what does the book charge?")
+    print("Step 1: what does the book charge?")
     k, delta, pi_lo, pi_hi = calibrate(args.trials, args.warmup, args.seed)
     print(f"\n  cost per share = {k:.3f} * participation^{delta:.2f}, "
           f"fitted over {pi_lo:.0%}-{pi_hi:.0%} participation")
@@ -213,7 +213,7 @@ def main() -> None:
     print("  outside the few-percent range those studies cover, and cost is "
           "expected to bend up.")
 
-    print("\nStep 2 — the portfolio problem, costs ignored")
+    print("\nStep 2: the portfolio problem, costs ignored")
     target = optimal_weights()
     current = list(CURRENT)
     print(f"  {'asset':<10}{'current':>10}{'target':>10}{'move':>10}"
@@ -225,7 +225,7 @@ def main() -> None:
     gain = utility(target) - utility(current)
     print(f"  utility gain from the full rebalance: {gain:>+.4%} of NAV")
 
-    print("\nStep 3 — the same problem, paying what the book charges")
+    print("\nStep 3: the same problem, paying what the book charges")
     print(f"  {'fraction moved':>16}{'utility gain':>15}{'cost':>10}{'net':>11}")
     best_f, best_net = 0.0, 0.0
     for step in range(21):
@@ -248,8 +248,8 @@ def main() -> None:
               f"{w[i]:>10.1%}{pi:>16.1%}")
     print("\n  Read the last column against the calibration range above: where")
     print("  it falls below it the cost curve is being extrapolated, which is")
-    print("  the honest limit of a venue this small. The shape of the answer —")
-    print("  a partial rebalance and a no-trade band — is what a flat")
+    print("  the honest limit of a venue this small. The shape of the answer,")
+    print("  a partial rebalance and a no-trade band, is what a flat")
     print("  basis-point assumption can never give you.")
 
 

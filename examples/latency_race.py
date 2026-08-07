@@ -69,7 +69,7 @@ def main() -> None:
                 vol[mid_] += t.qty
 
     denom = front[FAST] + front[SLOW]
-    print("Latency race — identical makers, fast delay=0.05 vs slow delay=0.15")
+    print("Latency race: identical makers, fast delay=0.05 vs slow delay=0.15")
     print(f"steps={args.steps}  seed={args.seed}  trades={len(sim.tape)}")
     for mid_, label in ((FAST, "fast"), (SLOW, "slow")):
         share = front[mid_] / denom if denom else 0.0

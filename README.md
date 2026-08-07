@@ -4,10 +4,11 @@
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**[Run it in your browser →](https://superkush06.github.io/lobster/demo/)** — two market
-makers, identical quotes, different wire delays. Move the latency slider and watch
-queue position and markout move with it. That page runs this package under Pyodide;
-there is no server and no reimplementation.
+**[Run it in your browser →](https://superkush06.github.io/lobster/demo/)**
+A live order book you can change, then four experiments run on it: queue position
+and adverse selection, metaorder impact, the return distribution, and what the book
+charges right now. That page runs this package under Pyodide, so there is no server
+and no reimplementation.
 
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has
@@ -19,7 +20,7 @@ code.
 The hard part is not the data structure. Orders arrive in a different order
 than they were sent, a marketable order must never rest and cross the book,
 agents can trade with themselves and inflate the tape, and every number you
-care about — queue position, adverse selection, market-maker P&L — is
+care about (queue position, adverse selection, market-maker P&L) is
 measured off that tape. This package handles those cases and then measures
 its own output against published microstructure facts, so you can see where
 it stops looking like a real market.
@@ -27,7 +28,7 @@ it stops looking like a real market.
 ![the book through time](docs/book_depth.png)
 
 Each horizontal band is a resting queue; colour is the size waiting in it.
-The two lines are the best bid and ask, and the triangles are prints —
+The two lines are the best bid and ask, and the triangles are prints:
 buyer-initiated above, seller-initiated below. The price does not glide: it
 sits inside a corridor of depth until something eats through a level.
 Between ticks 1000 and 1150 the bid queues stop being replaced and the whole
@@ -41,7 +42,7 @@ pip install -e ".[dev]"         # library + pytest + ruff
 pip install -e ".[dev,plot]"    # adds matplotlib, needed for the figures
 ```
 
-Runtime dependencies: none — the package imports only the standard library.
+Runtime dependencies: none. The package imports only the standard library.
 `matplotlib` (the `plot` extra) is needed only by
 `examples/make_figures.py` and the notebook. Run every command below from
 the repository root; the examples read relative paths such as
@@ -63,7 +64,7 @@ print(book.spread)       # 1.0
 
 The API enforces two rules. `book.add()` raises `ValueError` on an order
 that would cross the opposite side, because a silently crossed book corrupts
-every statistic downstream — marketable orders go through `match()`. And
+every statistic downstream, so marketable orders go through `match()`. And
 `match()` leaves the unfilled remainder on the taker, so `taker.qty > 0`
 after a market order means the book ran out of size.
 
@@ -106,7 +107,7 @@ computes four textbook microstructure diagnostics from a finished run, and
 ![stylized facts](docs/stylized_facts.png)
 
 ```
-Stylized-facts scorecard — 100,000 ticks, seed 7
+Stylized-facts scorecard: 100,000 ticks, seed 7
 
 demo mix  (80,706 trades)
      yes  bid-ask bounce             rho1 = -0.245 against Roll's floor of -0.5
@@ -238,7 +239,7 @@ submission delay. Price-time priority does the rest.
 `latency_race.py --steps 4000 --seed 11` (also the defaults):
 
 ```
-Latency race — identical makers, fast delay=0.05 vs slow delay=0.15
+Latency race: identical makers, fast delay=0.05 vs slow delay=0.15
 steps=4000  seed=11  trades=1706
   fast maker: front-of-queue share=72.7%  passive fill volume=  2872  markout(h=10)=-0.00019
   slow maker: front-of-queue share=27.3%  passive fill volume=   698  markout(h=10)=-0.00422
@@ -261,7 +262,7 @@ No real market data ships with this repository and none was used to validate
 it. `data/sample_messages.csv` is a **7-row synthetic fixture** written by
 hand in the LOBSTER message format (`Time, EventType, OrderID, Size, Price,
 Direction`), and it exists to exercise the parser and the book-reconstruction
-path — not to stand in for a NASDAQ capture. What this package replays is the
+path, rather than to stand in for a NASDAQ capture. What this package replays is the
 *format*; what it reproduces of real markets is the stylized-facts scorecard
 above, which is measured against published microstructure results, not
 against a data feed.
@@ -283,8 +284,8 @@ print(f"applied={stats.applied} unknown={stats.unknown_total} clean={stats.clean
 applied=7 unknown=0 clean=True
 ```
 
-Real LOBSTER message files — the ones you would supply yourself, from
-lobsterdata.com or any venue that exports the same six columns — reference
+Real LOBSTER message files, the ones you would supply yourself from
+lobsterdata.com or any venue that exports the same six columns, reference
 orders that were already resting when the capture window opened, which the
 fixture above deliberately does not. A cold-start replay cannot match those
 ids, so it
@@ -299,10 +300,10 @@ faithful, and `strict=True` raises on the first one. Seed the book with
 lobster/
 ├── order.py       # Side, OrderType, Order (with optional ttl)
 ├── book.py        # PriceLevel, OrderBook (+ from_snapshot)
-├── matching.py    # match() — price-time priority engine + STP policies
+├── matching.py    # match(): price-time priority engine + STP policies
 ├── tape.py        # Trade dataclass + Tape buffer
 ├── latency.py     # ConstantLatency, JitteredLatency (gamma)
-├── impact.py      # LinearImpact, SquareRootImpact — pre-trade estimators
+├── impact.py      # LinearImpact, SquareRootImpact: pre-trade estimators
 ├── agents/        # latency-aware Agent base + Noise / MarketMaker / Momentum
 ├── sim.py         # event-driven arrivals, self-trade prevention, TTL expiry
 ├── replay.py      # LOBSTER message replay + ReplayStats
@@ -320,26 +321,26 @@ themselves, and that is exactly the tape `MomentumAgent` and `markout` read.
 an unboundedly thick book. `Analytics.wash_trade_fraction()` audits the
 first; under the default policy it is 0.
 
-All three hot paths — resting a limit order, crossing a marketable one,
-replaying a message — run at a few hundred thousand operations per second on
+All three hot paths (resting a limit order, crossing a marketable one,
+replaying a message) run at a few hundred thousand operations per second on
 one CPython core. The exact figures move by more than half between machines
 and between runs, so rather than quote mine, run
 `python benchmarks/throughput.py` and read yours.
 
 ## Reading further
 
-- [`docs/theory.md`](docs/theory.md) — the derivations. Queue position and
+- [`docs/theory.md`](docs/theory.md) is the derivations. Queue position and
   fill probability, why latency buys time priority, Roll's bounce and the
   implied-spread estimator, variance ratios, why order-flow memory is a
   consequence of order splitting, Glosten–Milgrom and markout, and why
   linear impact is not the square-root law.
-- [`docs/validation.md`](docs/validation.md) — the ledger. What the
+- [`docs/validation.md`](docs/validation.md) is the ledger. What the
   estimators recover from processes with known answers, what the simulator
   reproduces of the published stylized facts, and the four things it gets
   wrong with the reason for each.
-- [`docs/design.md`](docs/design.md) — modelling assumptions, invariants,
+- [`docs/design.md`](docs/design.md) covers modelling assumptions, invariants,
   numerics, replay fidelity.
-- [`examples/walkthrough.ipynb`](examples/walkthrough.ipynb) — build,
+- [`examples/walkthrough.ipynb`](examples/walkthrough.ipynb) will build,
   simulate, plot, analyse, replay, end to end. Needs the `plot` extra and a
   Jupyter install; run it from the `examples/` directory, since it reads
   `../data/sample_messages.csv`.
@@ -355,7 +356,7 @@ and between runs, so rather than quote mine, run
 - **Not a trading system.** No venue connectivity, no order gateway, no
   risk controls. Nothing here should touch a live account.
 - **Not optimised.** Pure standard-library Python, no NumPy, no pandas, no
-  extension modules. The constraint is deliberate — it is what keeps the
+  extension modules. The constraint is deliberate, and it is what keeps the
   matching engine and the estimators readable end to end, and it is why the
   README quotes correctness numbers and not throughput numbers.
 
@@ -368,7 +369,7 @@ and between runs, so rather than quote mine, run
   boundaries. Queue dynamics at the touch depend heavily on the tick in real
   venues.
 - **Only submissions pay latency.** Cancels are instantaneous, so the
-  cancel-race — pulling a stale quote before it is picked off — is not
+  cancel-race (pulling a stale quote before it is picked off) is not
   modelled, which flatters fast agents.
 - **Replay reconstructs the visible book only.** Hidden-order executions
   (LOBSTER type 5) and auction crosses are skipped by design, and snapshot
@@ -384,4 +385,4 @@ and between runs, so rather than quote mine, run
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

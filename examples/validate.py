@@ -315,7 +315,7 @@ def main() -> None:
     args = ap.parse_args()
     q = args.quick
 
-    print("lobster — validation against external ground truth")
+    print("lobster: validation against external ground truth")
     if args.part in ("1", "all"):
         print("=" * 66)
         print("Part 1: estimators against closed-form answers")

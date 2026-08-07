@@ -81,7 +81,7 @@ def test_market_maker_demo_output_is_verbatim():
 
 
 def test_latency_race_output_is_verbatim():
-    block = block_starting("Latency race —")
+    block = block_starting("Latency race:")
     assert run_example("latency_race").strip() == block.strip()
 
 
