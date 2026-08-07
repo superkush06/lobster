@@ -260,11 +260,20 @@ steps=4000  seed=11  trades=1706
 ```
 
 Three times the speed holds the front of the queue 73% of the time and
-captures four times the passive volume. The third panel is the more
-interesting result: the slow maker's markout is -0.00422 against the fast
-maker's -0.00019, about twenty times worse. The slow maker mostly fills once
-the queue ahead of it has already been consumed, which is exactly when being
-filled is bad news. Speed buys better volume, not just more of it.
+captures four times the passive volume. Both of those replicate: across
+seeds 1 to 12 at this configuration the fast maker leads the queue in 12 of
+12 runs, on 67% to 78% of ticks, with a mean 1,116 passive fills against 232.
+
+The markout is where a single run misleads, and the ratio printed above is
+the reason to say so. On this seed the slow maker's -0.00422 against the fast
+maker's -0.00019 looks like a factor of twenty. Over the same twelve seeds
+the means are -0.0072 and -0.0221, the fast maker comes out ahead in 8 runs
+of 12, and the seed-to-seed spread of the gap (sd 0.029 against a mean of
+0.015, so t is about 1.8 on 11 degrees of freedom) is too wide to call it.
+Latency buys queue position here beyond any doubt. Whether it also buys a
+better trade is a claim this simulator cannot support at this sample size,
+and the demo's experiment 01 recomputes the whole sweep in the browser to
+show it.
 
 `ConstantLatency(0)` is bit-identical to running with no latency model at
 all (`tests/test_event_queue.py` checks this), so the event queue is a

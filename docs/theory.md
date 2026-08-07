@@ -74,11 +74,9 @@ ticks:
 | fast (0.05) | 72.7% | 2,872 | $-0.00019$ |
 | slow (0.15) | 27.3% | 698 | $-0.00422$ |
 
-Three times the speed buys roughly four times the passive volume and an
-order of magnitude less adverse selection. The last column is the subtle
-one and is explained in §7: the slow maker fills mostly when the fast maker
-*declines* to be at the front, which is exactly when being there is a bad
-idea.
+Three times the speed buys roughly four times the passive volume. The first
+two columns replicate across seeds; the third does not, and §7 works through
+why the single-seed ratio in it is not a result.
 
 ---
 
@@ -234,11 +232,20 @@ the horizon is in metric samples, not trades, so it is comparable across
 runs with different trade intensity.
 
 In the latency race the fast maker's markout is $-0.00019$ against the slow
-maker's $-0.00422$. The likely mechanism, and the one the standard story
-predicts: the fast maker holds the front of the queue in ordinary
-conditions and takes the benign flow, while the slow maker fills mainly
-once the queue ahead of it has been consumed, which is exactly when
-something large is walking the book.
+maker's $-0.00422$, which reads as a factor of twenty. It is one seed. Over
+seeds 1 to 12 at the same configuration the means are $-0.0072$ and
+$-0.0221$, the fast maker is ahead in 8 runs of 12, and the gap has a
+standard deviation of $0.029$ against a mean of $0.015$, so $t \approx 1.8$
+on 11 degrees of freedom. That is the direction the standard story predicts,
+and it is not enough evidence to claim it.
+
+The mechanism that story proposes is that the fast maker holds the front of
+the queue in ordinary conditions and takes the benign flow, while the slow
+maker fills mainly once the queue ahead of it has been consumed, which is
+exactly when something large is walking the book. The queue half of that is
+measured here and is unambiguous, at 12 runs of 12. The adverse-selection
+half is not, and separating the two would need either far more seeds or an
+agent whose informed flow is labelled.
 
 ---
 
