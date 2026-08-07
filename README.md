@@ -7,7 +7,7 @@
 A detailed record of experiments and visualisations on a simulated stock
 exchange, with the engine that produced them.
 
-### ▶ [**Click here to run it in your browser**](https://superkush06.github.io/lobster/demo/)
+### ▶ Run it in your browser: [**superkush06.github.io/lobster/demo**](https://superkush06.github.io/lobster/demo/)
 
 A live order book you can change, and five experiments measured on it:
 
