@@ -108,7 +108,9 @@ obtained the wrong way.
 
 Figures: `python examples/make_figures.py` writes `docs/book_depth.png`,
 `docs/stylized_facts.png`, `docs/latency_race.png` and `docs/impact_law.png`,
-all from live runs.
+all from live runs. `python examples/make_animated_depth.py` writes the
+animated version of the first of those, hand-emitted as SVG off the same
+seed, in a light and a dark variant.
 
 ## Validation
 

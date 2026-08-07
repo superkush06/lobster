@@ -26,8 +26,8 @@ reimplementation.
 
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has
-latency. It's about 2,130 lines of dependency-free Python and 2,870 lines
-of tests (215 of them). Every number printed on this page is regenerated and
+latency. It's about 2,145 lines of dependency-free Python and 2,990 lines
+of tests (228 of them). Every number printed on this page is regenerated and
 diffed by `tests/test_readme_examples.py`, so the page can't drift from the
 code.
 
@@ -39,15 +39,29 @@ measured off that tape. This package handles those cases and then measures
 its own output against published microstructure facts, so you can see where
 it stops looking like a real market.
 
-![the book through time](docs/book_depth.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/book_depth_anim_dark.svg">
+  <img alt="the book through time: 1,400 ticks of resting depth, revealed by a sweeping time cursor" src="docs/book_depth_anim.svg">
+</picture>
 
 Each horizontal band is a resting queue; colour is the size waiting in it.
 The two lines are the best bid and ask, and the triangles are prints:
 buyer-initiated above, seller-initiated below. The price doesn't glide: it
-sits inside a corridor of depth until something eats through a level.
-Between ticks 1000 and 1150 the bid queues stop being replaced and the whole
-structure steps down four points. Regenerate with
-`python examples/make_figures.py depth`.
+sits inside a corridor of depth until something eats through a level. Over
+ticks 1002 to 1202 the bid queues stop being replaced and the mid falls
+4.45.
+
+The head sweeping across is the simulation clock, and the book is uncovered
+behind it, so you watch the corridor build rather than arrive finished. The
+two dots riding the head are the best bid and ask at that instant. The sweep
+takes 8.6 seconds and the loop then holds for 2.4 so the finished frame
+reads as a still. It's an SVG, animated with SMIL and no script, which is
+all GitHub will run.
+
+Regenerate with `python examples/make_figures.py depth` for the static
+[`docs/book_depth.png`](docs/book_depth.png) and
+`python examples/make_animated_depth.py` for the animation. Both come off
+the same seed, so they are the same 1,400 ticks.
 
 ## Install
 
