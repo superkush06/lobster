@@ -55,12 +55,12 @@ def main() -> None:
     ax = fig.add_axes([0, 0, 1, 1]); ax.set_axis_off()
     ax.set_xlim(0, W); ax.set_ylim(H, 0)
 
-    ax.text(72, 74, "A N   E X P E R I M E N T   I N   P R I C E - T I M E   P R I O R I T Y",
+    ax.text(72, 74, "L O B S T E R   ::   S T O C K   E X C H A N G E   S I M U L A T I O N",
             family=MONO, fontsize=12.5, color=QUIET, va="center")
-    ax.text(70, 148, "Latency buys queue position", family=SERIF,
-            fontsize=54, color=INK, va="center")
-    ax.text(72, 206, "Two market makers post the same price. One sits closer to the exchange.",
-            family=SERIF, fontsize=21, color="#5E594F", va="center")
+    ax.text(70, 148, "A stock exchange you can take apart", family=SERIF,
+            fontsize=50, color=INK, va="center")
+    ax.text(72, 206, "A live order book, four experiments, and a matching engine in your browser.",
+            family=SERIF, fontsize=20, color="#5E594F", va="center")
 
     rows = frame[:8]
     top, rh, bh = 262, 36, 23

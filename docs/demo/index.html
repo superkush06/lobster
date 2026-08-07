@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Latency buys queue position</title>
-<meta name="description" content="Two market makers quote the same price; one sits closer to the exchange. A limit order book you can interfere with, running a real matching engine in your browser." />
+<title>lobster: an interactive stock exchange simulation</title>
+<meta name="description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run four experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
 <meta name="theme-color" content="#F7F4EF" />
 <meta name="author" content="Kushagra Behl" />
 <link rel="canonical" href="https://superkush06.github.io/lobster/demo/" />
@@ -15,16 +15,16 @@
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="lobster" />
 <meta property="og:url" content="https://superkush06.github.io/lobster/demo/" />
-<meta property="og:title" content="Latency buys queue position" />
-<meta property="og:description" content="Two market makers post the same price; one sits closer to the exchange. Drag either wire delay and watch queue position, fills and markout move. A real matching engine, running in your browser." />
+<meta property="og:title" content="lobster: an interactive stock exchange simulation" />
+<meta property="og:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run four experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
 <meta property="og:image" content="https://superkush06.github.io/lobster/demo/card.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:image:alt" content="A limit order book ladder. At one price level a blue block labelled FAST sits ahead of an orange block labelled SLOW, annotated: both makers at this price." />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Latency buys queue position" />
-<meta name="twitter:description" content="Two market makers post the same price; one sits closer to the exchange. Drag either wire delay and watch queue position, fills and markout move." />
+<meta name="twitter:title" content="lobster: an interactive stock exchange simulation" />
+<meta name="twitter:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run four experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
 <meta name="twitter:image" content="https://superkush06.github.io/lobster/demo/card.png" />
 <meta name="twitter:image:alt" content="A limit order book ladder with a fast maker queued ahead of a slow maker at the same price." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -128,14 +128,6 @@
                  text-transform: uppercase; letter-spacing: .085em; font-weight: 500;
                  color: var(--quiet) }
   .banner b { color: var(--ink); font-weight: 500 }
-  .cue { position: absolute; bottom: 1.6rem; left: 1.5rem; font-family: "IBM Plex Mono",
-         Menlo, monospace; font-size: .66rem; text-transform: uppercase;
-         letter-spacing: .085em; color: var(--quiet) }
-  @media (prefers-reduced-motion: no-preference) {
-    .cue { animation: drift 2.6s ease-in-out infinite }
-  }
-  @keyframes drift { 0%,100% { transform: translateY(0); opacity: .55 }
-                     50% { transform: translateY(5px); opacity: 1 } }
 
   /* ---- the live market ------------------------------------------------- */
   .knobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
@@ -240,10 +232,11 @@
 
 <header class="text hero">
   <span class="m">lobster &nbsp;::&nbsp; stock exchange simulation &nbsp;::&nbsp; four experiments &amp; a live market</span>
-  <h1>Latency buys<br>queue position</h1>
-  <p class="dek">Two market makers post the same price. One sits closer to the exchange.
-    Nothing else about them differs. Everything below is computed here, in this tab, by a
-    matching engine compiled to WebAssembly.</p>
+  <h1>A stock exchange<br>you can take apart</h1>
+  <p class="dek">An interactive visualisation of a limit order book. Start with a live market,
+    change who is trading in it, then run four experiments that measure what changed. Every
+    number on this page is computed here, in this tab, by a matching engine compiled to
+    WebAssembly.</p>
   <div class="banner">
     <span><b>00</b> &nbsp;Live market</span>
     <span><b>01</b> &nbsp;The queue</span>
@@ -251,7 +244,6 @@
     <span><b>03</b> &nbsp;The tape</span>
     <span><b>04</b> &nbsp;The book</span>
   </div>
-  <span class="cue">Scroll to the live market &#8595;</span>
 </header>
 
 <div class="text open sect-first" id="live">
