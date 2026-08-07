@@ -3,242 +3,522 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>lobster — latency buys queue position</title>
-<meta name="description" content="An order book matching engine running in your browser. Move the latency slider and watch queue position collapse." />
+<title>Latency buys queue position</title>
+<meta name="description" content="Two market makers quote the same price; one sits closer to the exchange. A limit order book you can interfere with, running a real matching engine in your browser." />
+<meta name="theme-color" content="#F7F4EF" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #ffffff; --fg: #1F2328; --dim: #59636e; --line: #d1d9e0;
-    --card: #f6f8fa; --accent: #0969da; --fast: #1a7f37; --slow: #cf222e;
-    --bid: #1a7f37; --ask: #cf222e;
+    --paper:  #F7F4EF;
+    --ink:    #35322C;
+    --quiet:  #8B857A;
+    --hair:   #DAD4C9;
+    --fast:   #1B6CA8;
+    --slow:   #C05F1B;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0d1117; --fg: #f0f6fc; --dim: #9198a1; --line: #3d444d;
-      --card: #151b23; --accent: #4493f8; --fast: #3fb950; --slow: #f85149;
-      --bid: #3fb950; --ask: #f85149;
-    }
-  }
-  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100% }
   body {
-    margin: 0; padding: 2rem 1.25rem 4rem; background: var(--bg); color: var(--fg);
-    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: Newsreader, "Iowan Old Style", Georgia, serif;
+    font-variant-numeric: tabular-nums;
+    font-synthesis-weight: none;
+    -webkit-font-smoothing: antialiased;
   }
-  main { max-width: 880px; margin: 0 auto; }
-  h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.02em; }
-  .sub { color: var(--dim); margin: 0 0 1.75rem; }
-  a { color: var(--accent); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1.15rem 1.25rem; margin-bottom: 1.1rem; }
-  .row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-  label { font-weight: 600; font-size: .93rem; }
-  input[type=range] { flex: 1 1 260px; accent-color: var(--accent); }
-  .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .95rem; min-width: 7.5rem; }
-  button {
-    background: var(--accent); color: #fff; border: 0; border-radius: 6px;
-    padding: .5rem 1.1rem; font-size: .95rem; font-weight: 600; cursor: pointer;
+
+  /* measure locked; figures escape it in one discrete step */
+  .text { max-width: 40rem; margin: 0 auto; padding: 0 1.5rem }
+  .wide { max-width: 51rem; margin: 0 auto; padding: 0 1.5rem }
+
+  /* the instrument voice: mono, uppercase, tracked, small */
+  .m { font-family: "IBM Plex Mono", Menlo, monospace; text-transform: uppercase;
+       letter-spacing: .085em; font-size: .69rem; font-weight: 500; color: var(--quiet) }
+
+  header { padding: 6rem 0 0 }
+  header .m { display: block; margin-bottom: 1.6rem }
+  h1 { font-size: 3.05rem; font-weight: 400; line-height: 1.06; letter-spacing: -.021em;
+       margin: 0; font-optical-sizing: auto }
+  .dek { font-size: 1.4rem; line-height: 1.45; font-weight: 300; color: #5E594F;
+         margin: 1.05rem 0 0; max-width: 32rem }
+  .rule { height: 1px; background: var(--hair); margin: 3rem auto 0; max-width: 40rem }
+
+  p { font-size: 1.25rem; line-height: 1.62; margin: 1.5rem 0 }
+  header + .text > p:first-child { margin-top: 2.4rem }
+  strong { font-weight: 600 }
+  a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--hair) }
+  a:hover { border-bottom-color: var(--ink) }
+  .f { color: var(--fast) } .s { color: var(--slow) }
+  .n { font-family: "IBM Plex Mono", Menlo, monospace; font-size: .88em; font-weight: 500 }
+
+  /* figures: no card, no border, no caption */
+  figure { margin: 2.8rem 0 0 }
+  canvas { display: block; width: 100% }
+  /* the live finding: prose measure, prose left edge — never a grey caption */
+  .said { font-size: 1.09rem; line-height: 1.52; color: #5E594F; margin: 1.1rem 0 0 }
+
+  /* controls: colour is the label */
+  .rig { display: flex; gap: 3rem; flex-wrap: wrap; justify-content: center;
+         margin: 2.1rem auto 0; max-width: 34rem }
+  .ctl { flex: 1 1 13rem; min-width: 11rem }
+  .ctl .lab { display: flex; justify-content: space-between; align-items: baseline;
+              margin-bottom: 1.1rem }
+  .ctl .lab b, .ctl .lab i {
+    font-family: "IBM Plex Mono", Menlo, monospace; font-style: normal; font-weight: 500 }
+  .ctl .lab b { text-transform: uppercase; letter-spacing: .085em; font-size: .69rem }
+  .ctl .lab i { font-size: .78rem }
+  .sl { position: relative; height: 34px; cursor: pointer; touch-action: none }
+  .sl .trk, .sl .fil { position: absolute; left: 0; top: 15px; height: 4px; border-radius: 2px }
+  .sl .trk { right: 0; opacity: .2 }
+  .sl .knb { position: absolute; top: 0; width: 34px; height: 34px; margin-left: -17px;
+             border-radius: 17px; cursor: grab }
+  .sl:active .knb { cursor: grabbing }
+  .sl:focus-visible { outline: none }
+  .sl:focus-visible .knb { box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px currentColor }
+
+  .bar { display: flex; align-items: baseline; justify-content: space-between;
+         margin: 2.4rem auto 0; max-width: 34rem;
+         border-top: 1px solid var(--hair); padding-top: .7rem }
+  button.m { background: none; border: 0; padding: 0; cursor: pointer }
+  button.m:hover { color: var(--ink) }
+
+  footer { margin: 4.5rem auto 7rem; padding-top: 1.4rem; border-top: 1px solid var(--hair);
+           font-size: 1rem; line-height: 1.55; color: #6E695E }
+
+  @media (max-width: 640px) {
+    header { padding-top: 3rem } h1 { font-size: 2.1rem }
+    .dek { font-size: 1.15rem } p { font-size: 1.1rem } .rig { gap: 1.6rem }
   }
-  button:disabled { opacity: .55; cursor: default; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .9rem; }
-  .stat { border: 1px solid var(--line); border-radius: 8px; padding: .7rem .85rem; background: var(--bg); }
-  .stat .k { font-size: .78rem; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
-  .stat .v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.25rem; font-weight: 600; margin-top: .15rem; }
-  .fast { color: var(--fast); } .slow { color: var(--slow); }
-  .bar { height: 26px; border-radius: 5px; overflow: hidden; display: flex; border: 1px solid var(--line); }
-  .bar span { display: block; height: 100%; font-size: .8rem; color: #fff; text-align: center; line-height: 26px; font-family: ui-monospace, monospace; }
-  canvas { width: 100%; height: 190px; display: block; }
-  table { width: 100%; border-collapse: collapse; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .86rem; }
-  td { padding: .12rem .4rem; }
-  td.q { color: var(--dim); text-align: right; width: 4.5rem; }
-  .depth { display: inline-block; height: 11px; border-radius: 2px; vertical-align: middle; }
-  .status { color: var(--dim); font-size: .9rem; font-family: ui-monospace, monospace; }
-  .note { color: var(--dim); font-size: .88rem; }
-  h2 { font-size: 1.05rem; margin: 0 0 .8rem; }
 </style>
 </head>
 <body>
-<main>
-  <h1>Latency buys queue position</h1>
-  <p class="sub">
-    Two market makers quote identical prices off the same mid. The only difference
-    between them is how long their orders take to reach the book. Everything below is
-    computed by <a href="https://github.com/superkush06/lobster">lobster</a>’s matching
-    engine — the actual Python package, compiled to WebAssembly and running in this tab.
-  </p>
 
-  <div class="card">
-    <div class="row">
-      <label for="fast">Fast maker wire delay</label>
-      <input id="fast" type="range" min="1" max="30" value="5" step="1" />
-      <span class="val" id="fastv">0.05 ticks</span>
+<header class="text">
+  <span class="m">Lobster · limit order book</span>
+  <h1>Latency buys<br>queue position</h1>
+  <p class="dek">Two market makers post the same price. One sits closer to the exchange.
+    Nothing else about them differs.</p>
+  <div class="rule"></div>
+</header>
+
+<div class="text">
+  <p>An order book is a queue, and the only way to the front of a queue is to arrive early.
+    Below is the bid side of one. Each row is a price; each block inside a row is a single
+    resting order, drawn left to right in the order it will be filled. Most book views collapse
+    a row to a single number, which hides the only thing that matters here — so this one keeps
+    the orders apart and colours them by who sent them:</p>
+</div>
+
+<div class="wide">
+  <figure><canvas id="ladder"></canvas></figure>
+
+  <div class="rig">
+    <div class="ctl">
+      <div class="lab"><b class="f">Fast maker</b><i class="f" id="vFast">0.05</i></div>
+      <div class="sl" id="slFast" tabindex="0" role="slider" aria-label="Fast maker wire delay"
+           aria-valuemin="0.02" aria-valuemax="0.30" aria-valuenow="0.05">
+        <div class="trk"></div><div class="fil"></div><div class="knb"></div>
+      </div>
     </div>
-    <div class="row" style="margin-top:.6rem">
-      <label for="slow">Slow maker wire delay</label>
-      <input id="slow" type="range" min="1" max="30" value="15" step="1" />
-      <span class="val" id="slowv">0.15 ticks</span>
-    </div>
-    <div class="row" style="margin-top:.95rem">
-      <button id="run" disabled>Loading Python…</button>
-      <span class="status" id="status">booting Pyodide</span>
+    <div class="ctl">
+      <div class="lab"><b class="s">Slow maker</b><i class="s" id="vSlow">0.15</i></div>
+      <div class="sl" id="slSlow" tabindex="0" role="slider" aria-label="Slow maker wire delay"
+           aria-valuemin="0.02" aria-valuemax="0.30" aria-valuenow="0.15">
+        <div class="trk"></div><div class="fil"></div><div class="knb"></div>
+      </div>
     </div>
   </div>
 
-  <div class="card">
-    <h2>Who is first in line at the best bid?</h2>
-    <div class="bar" id="bar">
-      <span style="width:50%;background:var(--fast)">fast</span>
-      <span style="width:50%;background:var(--slow)">slow</span>
-    </div>
-    <p class="note" id="barnote" style="margin:.7rem 0 0">
-      Price–time priority: at a shared price level, whoever arrived first gets filled first.
-    </p>
+  <div class="bar">
+    <button class="m" id="play">&#10073;&#10073; pause</button>
+    <span class="m" id="boot">booting</span>
   </div>
+</div>
 
-  <div class="card">
-    <h2>What that is worth</h2>
-    <div class="grid">
-      <div class="stat"><div class="k">Fast fills</div><div class="v fast" id="ff">—</div></div>
-      <div class="stat"><div class="k">Slow fills</div><div class="v slow" id="sf">—</div></div>
-      <div class="stat"><div class="k">Fast markout</div><div class="v fast" id="fm">—</div></div>
-      <div class="stat"><div class="k">Slow markout</div><div class="v slow" id="sm">—</div></div>
-    </div>
-    <p class="note" id="mnote" style="margin:.85rem 0 0">
-      Markout is the average mid move after a fill, signed by direction. Negative means
-      the price ran against you right after you traded — you were adversely selected.
-    </p>
-  </div>
+<div class="text">
+  <p>Both handles set how long a maker's orders spend on the wire before the exchange sees
+    them. Price&ndash;time priority does the rest: at a shared price, whoever arrived first is
+    filled first, so shortening one wire slides that maker's block to the left and keeps it
+    there. Give them the same delay and the advantage disappears; overshoot, and it changes
+    hands.</p>
 
-  <div class="card">
-    <h2>Mid price</h2>
-    <canvas id="chart" width="1600" height="380"></canvas>
-  </div>
+  <p>That is the whole mechanism. Not a better price, not a bigger size, not a cleverer model
+    &mdash; arrival order. One run of fifteen hundred ticks would not tell you whether it were
+    real or whether that seed happened to be kind, so here are twelve, each a separate market:</p>
+</div>
 
-  <div class="card">
-    <h2>Book at the final tick</h2>
-    <table id="book"><tbody></tbody></table>
-  </div>
+<div class="wide">
+  <figure><canvas id="lead"></canvas></figure>
+</div>
+<div class="text"><p class="said" id="sLead"></p></div>
 
-  <p class="note">
-    Source: <a href="https://github.com/superkush06/lobster">github.com/superkush06/lobster</a> ·
-    the driver this page calls is
-    <a href="https://github.com/superkush06/lobster/blob/main/docs/demo/sim.py">docs/demo/sim.py</a>,
-    about sixty lines.
-  </p>
-</main>
+<div class="text">
+  <p>So being early wins the queue. The obvious next thought is that it therefore wins money,
+    and that turns out to be wrong &mdash; which is the more interesting half of this.</p>
+
+  <p><strong>Markout</strong> is the average move in the mid price over the twenty ticks after
+    one of your orders fills, signed by whether you bought or sold. Positive means the market
+    kept going your way. Negative means you were the one who got run over &mdash; you were
+    <em>adversely selected</em>. Here is every seed, one dot each:</p>
+</div>
+
+<div class="wide">
+  <figure><canvas id="mark"></canvas></figure>
+</div>
+<div class="text"><p class="said" id="sMark"></p></div>
+
+<div class="text">
+  <p>The reason is not subtle once you see it. A sweep arrives when somebody wants the price
+    moved, and it eats the queue from the front. Being first in line is not a way to avoid that
+    trade &mdash; it is a way to be guaranteed it. The maker behind you fills only on the sweeps
+    big enough to reach it, and skips every small one that was about to go against you both.</p>
+
+  <p id="close"></p>
+
+  <footer>
+    Every number here is computed by <a href="https://github.com/superkush06/lobster">lobster</a>'s
+    matching engine &mdash; the Python package itself, compiled to WebAssembly and running in this
+    tab, not a reimplementation in JavaScript. The driver the page calls into is
+    <a href="https://github.com/superkush06/lobster/blob/main/docs/demo/sim.py">sim.py</a>, about
+    ninety lines. Nothing here is precomputed; move a handle and the simulation runs again.
+  </footer>
+</div>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"
         integrity="sha384-i3R37b3tF+HWudsUf1VSEOY2YxwSNMqY8DQa9Z0O3xh+NkJ9o+yjcGyIi5huj+nB"
         crossorigin="anonymous"></script>
 <script>
-const $ = (id) => document.getElementById(id);
-let pyodide = null, busy = false;
+const CSS = getComputedStyle(document.documentElement);
+const C = (n) => CSS.getPropertyValue(n).trim();
+const FAST = C("--fast"), SLOW = C("--slow"), INK = C("--ink"),
+      QUIET = C("--quiet"), HAIR = C("--hair"), OTHER = "#D3CCC0";
+const $ = (s) => document.querySelector(s);
+const MONO = (px, w) => `${w || 400} ${px}px "IBM Plex Mono", Menlo, monospace`;
 
-function fmt(x, n = 4) { return (x >= 0 ? "+" : "") + x.toFixed(n); }
+let py = null, D = null, S = null, busy = false, pending = false;
+let playing = true, frame = 0, lastT = 0;
+let vFast = 0.05, vSlow = 0.15;
 
-async function boot() {
-  try {
-    pyodide = await loadPyodide();
-    $("status").textContent = "unpacking lobster";
-    const buf = await (await fetch("lobster-pkg.zip")).arrayBuffer();
-    await pyodide.unpackArchive(buf, "zip");
-    const driver = await (await fetch("sim.py")).text();
-    pyodide.FS.writeFile("sim.py", driver);
-    await pyodide.runPythonAsync("import sys; sys.path.insert(0, '.')\nimport sim");
-    $("run").disabled = false;
-    $("run").textContent = "Run the race";
-    $("status").textContent = "ready";
-    run();
-  } catch (e) {
-    $("status").textContent = "failed to load: " + e.message;
+/* canvas: reallocate only when the CSS box actually changes */
+function ctx(cv, h) {
+  const w = cv.parentNode.clientWidth;
+  const s = Math.min(2, window.devicePixelRatio || 1);
+  if (cv._w !== w || cv._h !== h || cv._s !== s) {
+    cv.style.height = h + "px";
+    cv.width = Math.round(w * s); cv.height = Math.round(h * s);
+    cv._w = w; cv._h = h; cv._s = s;
   }
+  const c = cv.getContext("2d");
+  c.setTransform(s, 0, 0, s, 0, 0);
+  c.clearRect(0, 0, w, h);
+  return { c, w, h };
 }
 
-async function run() {
-  if (!pyodide || busy) return;
-  busy = true;
-  $("run").disabled = true;
-  $("status").textContent = "simulating…";
-  const f = (+$("fast").value) / 100, s = (+$("slow").value) / 100;
-  await new Promise((r) => setTimeout(r, 16)); // let the UI paint
-  const t0 = performance.now();
-  let res;
-  try {
-    res = (await pyodide.runPythonAsync(
-      `import json; json.dumps(sim.run(${f}, ${s}, 1500, 11))`
-    ));
-  } catch (e) {
-    $("status").textContent = "error: " + e.message;
-    busy = false; $("run").disabled = false; return;
-  }
-  const d = JSON.parse(res);
-  const ms = Math.round(performance.now() - t0);
-  draw(d, f, s);
-  $("status").textContent = `1,500 ticks · ${d.n_trades} trades · ${ms} ms`;
-  busy = false;
-  $("run").disabled = false;
-}
+/* figure 1 — the ladder, one block per resting order.
+   Bar length is absolute resting size on a scale shared by every level and
+   every frame, so a deep level reads as deep. Normalising per level would draw
+   a lone six-lot order the same width as twenty lots and destroy the encoding. */
+const ROWS = 8, RH = 32, BH = 20;
+let QMAX = 24;
+function drawLadder() {
+  const { c, w } = ctx($("#ladder"), ROWS * RH + 64);
+  if (!D) return;
+  const rows = D.frames[frame] || [];
+  const narrow = w < 460;
+  const padL = narrow ? 54 : 74, padR = 14, top = 30, span = w - padL - padR;
+  const half = BH / 2;
 
-function draw(d, f, s) {
-  const pct = d.front_share_fast * 100;
-  $("bar").innerHTML =
-    `<span style="width:${pct}%;background:var(--fast)">${pct.toFixed(0)}% fast</span>` +
-    `<span style="width:${100 - pct}%;background:var(--slow)">${(100 - pct).toFixed(0)}% slow</span>`;
-  const ratio = f > 0 ? (s / f) : 0;
-  $("barnote").textContent =
-    `The fast maker's orders arrive ${ratio.toFixed(1)}× sooner, and it holds the front of the ` +
-    `queue ${pct.toFixed(0)}% of the time (${d.front_fast} ticks to ${d.front_slow}).`;
+  c.textBaseline = "middle";
+  c.font = MONO(10, 500); c.fillStyle = QUIET;
+  c.textAlign = "left";  c.fillText("FILLED FIRST", padL, 12);
+  c.textAlign = "right"; c.fillText("RESTING SIZE", w - padR, 12);
 
-  $("ff").textContent = d.fills_fast.toLocaleString();
-  $("sf").textContent = d.fills_slow.toLocaleString();
-  $("fm").textContent = fmt(d.markout_fast);
-  $("sm").textContent = fmt(d.markout_slow);
-  const edge = f > 0 ? s / f : 1;
-  $("mnote").textContent =
-    (edge > 1.2 && d.markout_fast > 0 && d.markout_slow < 0)
-      ? "The sign flips: the fast maker earns on its fills while the slow maker is picked off. Same quotes, same prices — only the wire differs."
-      : (edge <= 1.2
-        ? "With both makers on the same wire the queue splits roughly evenly, and neither has a structural edge — which is the control case for the panel above."
-        : "Markout is the average mid move after a fill, signed by direction. Negative means the price ran against you right after you traded.");
-
-  // ---- mid price
-  const c = $("chart"), ctx = c.getContext("2d");
-  const css = getComputedStyle(document.documentElement);
-  const line = css.getPropertyValue("--accent").trim();
-  const grid = css.getPropertyValue("--line").trim();
-  const dim = css.getPropertyValue("--dim").trim();
-  ctx.clearRect(0, 0, c.width, c.height);
-  const m = d.mids;
-  if (m.length > 1) {
-    const lo = Math.min(...m), hi = Math.max(...m), pad = 34;
-    const X = (i) => pad + (i / (m.length - 1)) * (c.width - pad * 2);
-    const Y = (v) => c.height - pad - ((v - lo) / ((hi - lo) || 1)) * (c.height - pad * 2);
-    ctx.strokeStyle = grid; ctx.lineWidth = 1;
-    ctx.font = "22px ui-monospace, monospace"; ctx.fillStyle = dim;
-    for (let k = 0; k <= 3; k++) {
-      const v = lo + (hi - lo) * (k / 3), y = Y(v);
-      ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(c.width - pad, y); ctx.stroke();
-      ctx.fillText(v.toFixed(2), 4, y - 6);
+  for (let i = 0; i < ROWS; i++) {
+    const y = top + i * RH + RH / 2, lvl = rows[i];
+    if (!lvl) {                        // the book is only this deep right now
+      c.fillStyle = "#EFEBE3";
+      c.fillRect(padL, y - half, span * .06, BH);
+      continue;
     }
-    ctx.strokeStyle = line; ctx.lineWidth = 2.5; ctx.beginPath();
-    m.forEach((v, i) => (i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))));
-    ctx.stroke();
+
+    const owners = new Set(lvl.q.map((o) => o[0]));
+    const shared = owners.has(1) && owners.has(2);
+    if (shared) {                                    // the row that carries the argument
+      c.fillStyle = "#EAE3D6";
+      c.fillRect(padL - 68, y - RH / 2 + 1, span + 68 + padR - 4, RH - 2);
+    }
+
+    c.font = MONO(narrow ? 10 : 11.5, 500);
+    c.fillStyle = shared ? INK : QUIET; c.textAlign = "right";
+    c.fillText(lvl.px.toFixed(2), padL - (narrow ? 10 : 16), y);
+
+    let x = padL;
+    lvl.q.forEach(([owner, qty]) => {
+      const bw = Math.max(3, (qty / QMAX) * span - 1.5);
+      c.fillStyle = owner === 1 ? FAST : owner === 2 ? SLOW : OTHER;
+      c.fillRect(x, y - half, bw, BH);
+      if (owner && bw > 44) {                        // direct label, no legend
+        c.fillStyle = "#FFF"; c.font = MONO(9, 500); c.textAlign = "left";
+        c.fillText(owner === 1 ? "FAST" : "SLOW", x + 7, y + .5);
+      }
+      x += bw + 1.5;
+    });
+
+    if (shared) {   // direct label, but only the longest version that actually fits
+      c.fillStyle = "#6F6858"; c.font = MONO(9, 500); c.textAlign = "left";
+      const room = w - padR - (x + 9);
+      const fits = ["BOTH MAKERS AT THIS PRICE", "BOTH MAKERS", "BOTH"]
+        .find((s) => c.measureText(s).width <= room);
+      if (fits) c.fillText(fits, x + 9, y + .5);
+    }
   }
 
-  // ---- book ladder
-  const all = [...d.asks, ...d.bids].map((r) => r[1]);
-  const mx = Math.max(1, ...all);
-  const rows = [];
-  [...d.asks].reverse().forEach(([p, q]) => rows.push(
-    `<tr><td class="q">${q}</td><td><span class="depth" style="width:${(q / mx) * 100}%;background:var(--ask)"></span></td><td style="color:var(--ask)">${p.toFixed(2)}</td></tr>`));
-  d.bids.forEach(([p, q]) => rows.push(
-    `<tr><td class="q">${q}</td><td><span class="depth" style="width:${(q / mx) * 100}%;background:var(--bid)"></span></td><td style="color:var(--bid)">${p.toFixed(2)}</td></tr>`));
-  $("book").querySelector("tbody").innerHTML = rows.join("");
+  c.strokeStyle = HAIR; c.lineWidth = 1;             // the front-of-queue edge
+  c.beginPath(); c.moveTo(padL - .5, top); c.lineTo(padL - .5, top + ROWS * RH); c.stroke();
+  c.fillStyle = QUIET; c.font = MONO(10, 500); c.textAlign = "left";
+  c.fillText("TICK " + (D.frame0_tick + frame * D.frame_every), padL, top + ROWS * RH + 20);
+  c.textAlign = "right";
+  c.fillText("BID SIDE, TOP " + ROWS + " LEVELS", w - padR, top + ROWS * RH + 20);
 }
 
-$("fast").addEventListener("input", (e) => $("fastv").textContent = (e.target.value / 100).toFixed(2) + " ticks");
-$("slow").addEventListener("input", (e) => $("slowv").textContent = (e.target.value / 100).toFixed(2) + " ticks");
-$("fast").addEventListener("change", run);
-$("slow").addEventListener("change", run);
-$("run").addEventListener("click", run);
-boot();
+/* figure 2 — front-of-queue share */
+function drawLead() {
+  const { c, w, h } = ctx($("#lead"), 168);
+  if (!D) return;
+  const v = D.lead_curve, L = 46, R = 58, T = 28, B = 22;
+  const X = (i) => L + (i / Math.max(1, v.length - 1)) * (w - L - R);
+  const Y = (p) => T + (1 - p) * (h - T - B);
+
+  c.font = MONO(10, 500); c.textBaseline = "middle";
+  for (let p = 0; p <= 1.001; p += .25) {            // grid = tick lines at .1 alpha
+    c.strokeStyle = INK; c.globalAlpha = p === .5 ? .22 : .1; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(L, Y(p) + .5); c.lineTo(w - R, Y(p) + .5); c.stroke();
+    c.globalAlpha = 1; c.fillStyle = QUIET; c.textAlign = "right";
+    c.fillText((p * 100).toFixed(0), L - 10, Y(p));
+  }
+  c.textAlign = "left"; c.fillStyle = QUIET;         // axis label lives inside the axis
+  c.fillText("↑  % OF TICKS THE FAST MAKER IS FIRST IN LINE", L - 42, 11);
+  c.fillText("EVEN SPLIT", L + 6, Y(.5) - 8);
+
+  // every seed, faint; the one being filmed above, solid
+  if (S) {
+    c.strokeStyle = FAST; c.lineWidth = 1; c.globalAlpha = .22; c.lineJoin = "round";
+    S.curves.forEach((cv) => {
+      c.beginPath();
+      cv.forEach((p, i) => (i ? c.lineTo(X(i), Y(p)) : c.moveTo(X(i), Y(p))));
+      c.stroke();
+    });
+    c.globalAlpha = 1;
+  }
+  c.strokeStyle = FAST; c.lineWidth = 2; c.lineJoin = "round"; c.beginPath();
+  v.forEach((p, i) => (i ? c.lineTo(X(i), Y(p)) : c.moveTo(X(i), Y(p))));
+  c.stroke();
+  const last = v[v.length - 1];
+  c.fillStyle = FAST; c.beginPath(); c.arc(X(v.length - 1), Y(last), 3.5, 0, 7); c.fill();
+  c.textAlign = "left"; c.font = MONO(13, 500);
+  c.fillText((last * 100).toFixed(0) + "%", X(v.length - 1) + 10, Y(last));
+}
+
+/* figure 3 — markout as one dot per seed. A pair of bars would show a
+   difference; the question is whether the two distributions are even apart. */
+function drawMark() {
+  const { c, w } = ctx($("#mark"), 186);
+  if (!D || !S) return;
+  const all = S.markout_fast.concat(S.markout_slow);
+  const m = Math.max(.04, ...all.map(Math.abs)) * 1.12;
+  const L = 96, R = 24, T = 40, RH2 = 62;
+  const mid = L + (w - L - R) / 2, halfW = (w - L - R) / 2;
+  const X = (v) => mid + (v / m) * halfW;
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+
+  c.textBaseline = "middle"; c.font = MONO(10, 500);
+  c.strokeStyle = INK; c.globalAlpha = .3; c.lineWidth = 1;   // zero
+  c.beginPath(); c.moveTo(Math.round(X(0)) + .5, T - 16);
+  c.lineTo(Math.round(X(0)) + .5, T + RH2 + 24); c.stroke();
+  c.globalAlpha = 1; c.fillStyle = QUIET;
+  c.textAlign = "right"; c.fillText("RUN OVER  ←", X(0) - 9, 13);
+  c.textAlign = "left";  c.fillText("→  PAID", X(0) + 9, 13);
+
+  [["markout_fast", FAST, "FAST MAKER"], ["markout_slow", SLOW, "SLOW MAKER"]]
+    .forEach(([key, col, name], i) => {
+      const y = T + i * RH2, vals = S[key], mu = mean(vals);
+      c.fillStyle = QUIET; c.font = MONO(10, 500); c.textAlign = "left";
+      c.fillText(name, 0, y);
+      c.fillStyle = col; c.globalAlpha = .5;
+      vals.forEach((v) => { c.beginPath(); c.arc(X(v), y, 4, 0, 7); c.fill(); });
+      c.globalAlpha = 1;
+      c.strokeStyle = col; c.lineWidth = 2;                    // the mean
+      c.beginPath(); c.moveTo(X(mu), y - 15); c.lineTo(X(mu), y + 15); c.stroke();
+      c.fillStyle = col; c.font = MONO(11, 500);
+      c.textAlign = mu < 0 ? "right" : "left";
+      c.fillText((mu >= 0 ? "+" : "") + mu.toFixed(4), X(mu) + (mu < 0 ? -8 : 8), y + 26);
+    });
+
+  c.fillStyle = QUIET; c.font = MONO(9.5, 500); c.textAlign = "left";
+  c.fillText("ONE DOT PER SEED · BAR IS THE MEAN", 0, T + RH2 + 42);
+}
+
+const redraw = () => { drawLadder(); drawLead(); drawMark(); };
+
+/* slider — 4px track, filled portion is the same hue */
+function slider(el, readout, lo, hi, val, colour, onDone) {
+  const fil = el.querySelector(".fil"), knb = el.querySelector(".knb");
+  el.querySelector(".trk").style.background = colour;
+  fil.style.background = colour; knb.style.background = colour; el.style.color = colour;
+  let v = val, down = false;
+  const paint = () => {
+    const t = (v - lo) / (hi - lo);
+    knb.style.left = `calc(17px + ${t} * (100% - 34px))`;
+    fil.style.width = `calc(17px + ${t} * (100% - 34px))`;
+    readout.textContent = v.toFixed(2);
+    el.setAttribute("aria-valuenow", v.toFixed(2));
+    el.setAttribute("aria-valuetext", v.toFixed(2) + " ticks on the wire");
+  };
+  const at = (cx) => {
+    const r = el.getBoundingClientRect();
+    const t = Math.min(1, Math.max(0, (cx - r.left - 17) / (r.width - 34)));
+    const nv = Math.round((lo + t * (hi - lo)) * 100) / 100;
+    if (nv !== v) { v = nv; paint(); }
+  };
+  el.addEventListener("pointerdown", (e) => {
+    down = true; el.setPointerCapture(e.pointerId); at(e.clientX); e.preventDefault();
+  });
+  el.addEventListener("pointermove", (e) => { if (down) at(e.clientX); });
+  el.addEventListener("pointerup", () => { if (down) { down = false; onDone(v); } });
+  el.addEventListener("pointercancel", () => { down = false; });
+  el.addEventListener("keydown", (e) => {
+    const d = { ArrowLeft: -.01, ArrowDown: -.01, ArrowRight: .01, ArrowUp: .01 }[e.key];
+    if (!d) return;
+    v = Math.min(hi, Math.max(lo, Math.round((v + d) * 100) / 100));
+    paint(); onDone(v); e.preventDefault();
+  });
+  paint();
+}
+
+/* run */
+const pct = (x) => (x * 100).toFixed(0) + "%";
+
+async function simulate() {
+  // Pyodide is single-threaded, so a drag during a run has to wait rather than
+  // interleave. Remember that it happened instead of dropping it, or the page
+  // ends up showing results for a handle position the reader has moved off.
+  if (busy) { pending = true; return; }
+  busy = true;
+  $("#boot").textContent = "running";
+  const t0 = performance.now();
+  const raw = await py.runPythonAsync(`import json; json.dumps(sim.run(${vFast}, ${vSlow}))`);
+  D = JSON.parse(raw); frame = 0;
+  drawLadder();
+  $("#boot").textContent = "running 12 seeds";
+  S = JSON.parse(await py.runPythonAsync(
+    `import json; json.dumps(sim.sweep(${vFast}, ${vSlow}))`));
+  $("#boot").textContent =
+    `${S.share.length + 1} runs · ${Math.round(performance.now() - t0)} ms`;
+
+  // one size scale for every level and every frame, so bars never rescale mid-play
+  QMAX = 1;
+  D.frames.forEach((f) => f.forEach((lvl) => {
+    const t = lvl.q.reduce((a, b) => a + b[1], 0);
+    if (t > QMAX) QMAX = t;
+  }));
+
+  // who is actually early — never assume the labels still hold
+  const gap = vSlow - vFast, level = Math.abs(gap) < 0.02;
+  const A = gap > 0 ? "f" : "s", B = gap > 0 ? "s" : "f";
+  const nA = gap > 0 ? "fast maker" : "slow maker", nB = gap > 0 ? "slow maker" : "fast maker";
+  const shareA = gap > 0 ? D.share_fast : 1 - D.share_fast;
+  const mA = gap > 0 ? D.markout_fast : D.markout_slow;
+  const mB = gap > 0 ? D.markout_slow : D.markout_fast;
+  const fA = gap > 0 ? D.fills_fast : D.fills_slow;
+  const fB = gap > 0 ? D.fills_slow : D.fills_fast;
+
+  // the sweep, not the single run, is what any claim gets to rest on
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const sd = (a) => {
+    const mu = mean(a);
+    return Math.sqrt(a.reduce((s, x) => s + (x - mu) ** 2, 0) / (a.length - 1));
+  };
+  const N = S.share.length;
+  const shareSweep = gap > 0 ? S.share : S.share.map((x) => 1 - x);
+  const mkA = gap > 0 ? S.markout_fast : S.markout_slow;
+  const mkB = gap > 0 ? S.markout_slow : S.markout_fast;
+  const diff = mkA.map((x, i) => x - mkB[i]);
+  const aheadA = diff.filter((x) => x > 0).length;
+  const wonQueue = shareSweep.filter((x) => x > .5).length;   // counted, not assumed
+  const t = mean(diff) / (sd(diff) / Math.sqrt(N));
+
+  $("#sLead").innerHTML = level
+    ? `On the same wire the queue splits evenly &mdash;
+       <span class="n">${pct(mean(S.share))}</span> across all
+       <span class="n">${N}</span> seeds, spread <span class="n">±${(sd(S.share) * 100).toFixed(1)}</span>
+       points. This is the control, and it is how you check that none of this is scripted.`
+    : `Every seed lands in the same place: the <span class="${A}">${nA}</span> is first in line
+       <span class="n">${pct(mean(shareSweep))}</span> of the time, spread
+       <span class="n">±${(sd(shareSweep) * 100).toFixed(1)}</span> points across
+       <span class="n">${N}</span> runs, on a wire
+       <span class="n">${(Math.max(vFast, vSlow) / Math.min(vFast, vSlow)).toFixed(1)}×</span>
+       shorter. That is not a lucky seed.`;
+
+  $("#sMark").innerHTML = level
+    ? `Both clouds sit on top of each other, which is what the control should look like:
+       <span class="n">${mean(S.markout_fast).toFixed(4)}</span> against
+       <span class="n">${mean(S.markout_slow).toFixed(4)}</span>.`
+    : `The clouds overlap. The <span class="${A}">${nA}</span> won the queue in
+       <span class="n">${wonQueue} of ${N}</span> runs above, and came out ahead on markout in
+       <span class="n">${aheadA} of ${N}</span> &mdash; mean gap
+       <span class="n">${mean(diff) >= 0 ? "+" : ""}${mean(diff).toFixed(4)}</span> against a
+       spread of <span class="n">${sd(diff).toFixed(4)}</span>
+       (<span class="n">t&nbsp;=&nbsp;${t.toFixed(1)}</span>). Whatever speed is buying here, it
+       is not a better fill.`;
+
+  $("#close").innerHTML = level
+    ? `Same quotes, same prices, same wire &mdash; and nothing left to win. Pull either handle
+       back and the queue tilts again, while these two clouds stay exactly where they are.`
+    : `So the title is the whole claim, and it is deliberately narrow. Latency bought the
+       <span class="${A}">${nA}</span> <span class="n">${fA.toLocaleString()}</span> fills to the
+       <span class="${B}">${nB}</span>'s <span class="n">${fB.toLocaleString()}</span>, and it
+       bought the front of the queue in <span class="n">${wonQueue} of ${N}</span> runs. It did
+       not buy a better trade. A demo that stopped one figure earlier would have told you it
+       did.`;
+
+  redraw(); busy = false;
+  if (pending) { pending = false; await simulate(); }
+}
+
+function loop(t) {
+  if (D && playing && t - lastT > 130) {
+    frame = (frame + 1) % D.frames.length; drawLadder(); lastT = t;
+  }
+  requestAnimationFrame(loop);
+}
+
+$("#play").addEventListener("click", () => {
+  playing = !playing;
+  $("#play").innerHTML = playing ? "&#10073;&#10073; pause" : "&#9654; play";
+});
+addEventListener("resize", redraw);
+document.fonts.ready.then(redraw);
+
+(async function boot() {
+  try {
+    $("#boot").textContent = "loading python";
+    py = await loadPyodide();
+    $("#boot").textContent = "unpacking lobster";
+    py.unpackArchive(await (await fetch("lobster-pkg.zip")).arrayBuffer(), "zip");
+    py.FS.writeFile("sim.py", await (await fetch("sim.py")).text());
+    await py.runPythonAsync("import sys; sys.path.insert(0,'.')\nimport sim");
+    slider($("#slFast"), $("#vFast"), .02, .30, vFast, FAST, (v) => { vFast = v; simulate(); });
+    slider($("#slSlow"), $("#vSlow"), .02, .30, vSlow, SLOW, (v) => { vSlow = v; simulate(); });
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      playing = false; $("#play").innerHTML = "&#9654; play";
+    }
+    await simulate();
+    requestAnimationFrame(loop);
+  } catch (e) {
+    $("#boot").textContent = "failed — " + e.message;
+    console.error(e);
+  }
+})();
 </script>
 </body>
 </html>
