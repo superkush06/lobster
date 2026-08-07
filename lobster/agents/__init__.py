@@ -4,8 +4,9 @@ from .base import Agent, AgentContext
 from .market_maker import MarketMakerAgent
 from .momentum import MomentumAgent
 from .noise import NoiseAgent
+from .value import ValueAgent
 
 __all__ = [
     "Agent", "AgentContext",
-    "NoiseAgent", "MarketMakerAgent", "MomentumAgent",
+    "NoiseAgent", "MarketMakerAgent", "MomentumAgent", "ValueAgent",
 ]

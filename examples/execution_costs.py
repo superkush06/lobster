@@ -36,6 +36,7 @@ import pathlib
 import sys
 
 from lobster import Side, Simulation
+from lobster.agents import ValueAgent
 from lobster.execution import execute_metaorder, fit_power_law
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -128,7 +129,11 @@ def calibrate(trials: int, warmup: int, seed: int) -> tuple[float, float,
         total = slice_qty * (HORIZON // EVERY)
         shortfalls, parts, halves = [], [], []
         for t in range(trials):
-            sim = Simulation(agents=demo_agents(momentum=False), seed=seed + t)
+            agents = demo_agents(momentum=False)
+            sim = Simulation(agents=agents, seed=seed + t)
+            # Net out the efficient price's own drift, or a fundamental that
+            # wandered while the parent worked gets billed as impact.
+            va = next((a for a in agents if isinstance(a, ValueAgent)), None)
             for _ in sim.run(warmup):
                 pass
             if sim.book.spread is None:
@@ -137,7 +142,9 @@ def calibrate(trials: int, warmup: int, seed: int) -> tuple[float, float,
             before = sum(x.qty for x in sim.tape)
             mo = execute_metaorder(sim, Side.BUY, total, slice_qty=slice_qty,
                                    every=EVERY, agent_id=99,
-                                   start_ts=float(warmup))
+                                   start_ts=float(warmup),
+                                   reference=(None if va is None
+                                              else lambda va=va: va.value))
             printed = sum(x.qty for x in sim.tape) - before
             if mo.shortfall is None or printed <= 0:
                 continue
@@ -194,9 +201,17 @@ def main() -> None:
     print(f"\n  cost per share = {k:.3f} * participation^{delta:.2f}, "
           f"fitted over {pi_lo:.0%}-{pi_hi:.0%} participation")
     print(f"  the exponent is {'above' if delta > 1 else 'below'} 1, so cost "
-          "is convex in size. Published metaorder")
-    print("  studies find an exponent near 0.5; docs/validation.md says why "
-          "this one does not.")
+          "is convex in the rate you trade at.")
+    print("  Note this is the participation curve, not the size curve: the "
+          "horizon is fixed, so a")
+    print("  bigger parent here means trading faster rather than trading for "
+          "longer. The size law")
+    print("  is the one published studies put near 0.5, and docs/validation.md "
+          "2c measures it")
+    print("  separately. Participation this high (a fifth to two thirds of "
+          "printed volume) is far")
+    print("  outside the few-percent range those studies cover, and cost is "
+          "expected to bend up.")
 
     print("\nStep 2 — the portfolio problem, costs ignored")
     target = optimal_weights()

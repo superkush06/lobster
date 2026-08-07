@@ -11,8 +11,8 @@ there is no server and no reimplementation.
 
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has
-latency. It is about 1,950 lines of dependency-free Python and 2,650 lines
-of tests (185 of them). Every number printed on this page is regenerated and
+latency. It is about 2,130 lines of dependency-free Python and 2,800 lines
+of tests (192 of them). Every number printed on this page is regenerated and
 diffed by `tests/test_readme_examples.py`, so the page cannot drift from the
 code.
 
@@ -108,51 +108,53 @@ computes four textbook microstructure diagnostics from a finished run, and
 ```
 Stylized-facts scorecard — 100,000 ticks, seed 7
 
-demo mix  (29,882 trades)
-     yes  bid-ask bounce             rho1 = -0.370 against Roll's floor of -0.5
-     yes  humped depth profile       peak 0.43 from the mid; the touch holds 2.1% of peak size
-  partly  long memory of order flow  rho1 = +0.071, gone by lag 69, gamma = 0.94 (real flow: gamma ~ 0.5, never gone)
-      no  mid is a martingale        VR(100) = 10.57; 1.0 is a random walk
+demo mix  (80,706 trades)
+     yes  bid-ask bounce             rho1 = -0.245 against Roll's floor of -0.5
+     yes  humped depth profile       peak 1.28 from the mid; the touch holds 5.2% of peak size
+  partly  long memory of order flow  rho1 = +0.623, gone by lag 89, gamma = 1.29 (real flow: gamma ~ 0.5, never gone)
+      no  mid is a martingale        VR(100) = 0.45; 1.0 is a random walk
 
-no chaser  (27,612 trades)
-     yes  bid-ask bounce             rho1 = -0.461 against Roll's floor of -0.5
-     yes  humped depth profile       peak 0.43 from the mid; the touch holds 1.6% of peak size
-      no  long memory of order flow  rho1 = +0.005, inside the noise band from lag 1 (real flow: gamma ~ 0.5, never gone)
-  partly  mid is a martingale        VR(100) = 1.54; 1.0 is a random walk
+no chaser  (61,212 trades)
+     yes  bid-ask bounce             rho1 = -0.253 against Roll's floor of -0.5
+     yes  humped depth profile       peak 1.28 from the mid; the touch holds 5.4% of peak size
+     yes  long memory of order flow  rho1 = +0.527, gone by lag 128, gamma = 0.52 (real flow: gamma ~ 0.5, never gone)
+      no  mid is a martingale        VR(100) = 0.43; 1.0 is a random walk
 ```
 
 Panel by panel:
 
 **(a) The bounce is right.** Consecutive trade prices alternate between bid
-and ask, so trade-price changes have autocorrelation -0.370 against Roll's
+and ask, so trade-price changes have autocorrelation -0.245 against Roll's
 theoretical floor of -1/2. Feed the same covariance into Roll's
-implied-spread estimator and it returns 0.4230; the book's actual mean
-spread at the ticks where trades printed was 0.4505. The estimator recovers
-the spread that was paid, from trade prices alone. `scorecard.py` prints
-both.
+implied-spread estimator and it returns 0.1152; the book's actual mean
+spread at the ticks where trades printed was 0.2117. The estimator recovers
+roughly half the spread that was paid, because a chunk of the quoted spread
+here is never crossed. `scorecard.py` prints both.
 
-**(b) Order-flow memory is present but too short-lived.** Trade signs stay
-positively autocorrelated out to lag 69, then fall into the noise band. They
-sit at about half the empirical reference level for the first few lags,
-cross it around lag 10 and stay within about 50% of it out to lag 50. Real
-order flow stays positive for thousands of trades because institutions split
-parent orders. The only thing creating memory here is one momentum agent
-with a 20-trade window, so the memory dies when its window does.
+**(b) Order-flow memory has the right shape and the wrong length.** Without
+the chaser, trade signs decay with an exponent of 0.52, against the 0.5 that
+Bouchaud et al. report. That comes from the value trader's ladder being
+eaten rung by rung, which is a split parent order by another name and is
+exactly the mechanism Lillo, Mike and Farmer identify. The horizon is still
+far too short: memory is gone by lag 128 where real flow stays positive for
+thousands of trades. Add the chaser and its 20-trade window imposes its own
+timescale, pushing the exponent to 1.29.
 
-**(c) The mid is not a martingale, and the ablation says why.** With the
-chaser in the mix VR(100) = 10.6, which is badly super-diffusive. Take it
-out and VR(100) falls to 1.54. Nothing in the agent set trades *against* a
-trend, so momentum compounds unopposed.
+**(c) The mid is still not a martingale, though it fails the other way now.**
+VR(100) is 0.45 with the chaser and 0.43 without. Both are sub-diffusive:
+the value trader pulls price back toward its fundamental, so returns mean
+revert. An earlier version of this package had no such agent and scored 10.6,
+badly super-diffusive. Neither version has the balance right.
 
-**(d) The depth profile is humped**, peaking 0.43 from the mid while the
-mean half-spread is only 0.18; the innermost bin holds about 2% of the
+**(d) The depth profile is humped**, peaking 1.28 from the mid while the
+mean half-spread is only 0.096; the innermost bin holds about 5% of the
 peak's size. Both agent mixes give the same curve, and that is the tell: the
-hump's location is set by the quoting kernel, not by adverse selection. The
-shape is right for the wrong reason.
+hump's location is set by the quoting kernel and by the value ladder's
+slope, not by adverse selection. The shape is right for a mechanical reason.
 
-Two of four pass. Use this for queue-position and liquidity-provision
-questions. Do not use it for anything that depends on a realistic price
-process.
+Three of four pass without the chaser, two with it. Use this for
+queue-position, liquidity-provision and execution-cost questions. The price
+process is the weak part: it mean reverts harder than a real one.
 
 ## Does it agree with anything outside itself?
 
@@ -176,16 +178,22 @@ with them is wrong too.
 | `SquareRootImpact`: impact(4Q)/impact(Q) | 2.000000000000 | 2 |
 
 Then the simulator itself, against the literature. It gets the bid-ask
-bounce, the humped depth profile, adverse selection, heavy tails and — for
-the right reason or not — volatility clustering. It misses on three things.
-Order-flow memory decays with exponent 0.94 against a published ~0.5, and is
-gone by lag 69 instead of lasting thousands of trades. The mid is not a
-martingale. And a metaorder here costs a **convex** function of its size,
-fitted exponent 1.2 to 1.5, where published estimates are concave at 0.5 to
-0.6. Panel (b) above is that impact gap; panel (a) is the evidence that the
-gap belongs to the model and not to the measurement. `validation.md` names
-what is missing — liquidity that regenerates in response to being consumed —
-and does not pretend the difference is small.
+bounce, the humped depth profile, adverse selection, heavy tails, a tail
+index inside Cont's band, volatility clustering, and metaorder cost that is
+**concave** in size at a fitted exponent of 0.57, against published estimates
+of 0.5 to 0.6.
+
+That last one used to be the headline failure: cost came out convex, fitted
+between 1.2 and 1.5, which is the wrong sign of curvature. `validation.md`
+diagnosed it as an agent set in which nothing replenished liquidity in
+response to being consumed, and named the missing piece. `ValueAgent` is that
+piece, and the section
+[The row that used to fail, and what fixed it](docs/validation.md) shows the
+mechanism, the calibration, and what else moved when it landed.
+
+Two rows still miss. Order-flow memory is gone by lag 128 where real flow
+lasts thousands of trades, and returns carry a small negative
+autocorrelation, -0.058, where the reference is zero.
 
 ## Where this sits
 
@@ -202,17 +210,17 @@ three-asset mean-variance problem inlined in the same file (nothing is
 imported from the sibling repos; the upstream inputs are written out):
 
 ```
-  cost per share = 10.791 * participation^1.75, fitted over 19%-65% participation
+  cost per share = 0.437 * participation^1.39, fitted over 18%-63% participation
 
     fraction moved   utility gain      cost        net
                 0%        0.0000%   0.0000%    0.0000%
-               20%        0.0193%   0.0027%    0.0166%
-               40%        0.0342%   0.0181%    0.0161%
-               60%        0.0449%   0.0553%   -0.0103%
-               80%        0.0514%   0.1220%   -0.0707%
-              100%        0.0535%   0.2255%   -0.1720%
+               20%        0.0193%   0.0003%    0.0190%
+               40%        0.0342%   0.0013%    0.0329%
+               60%        0.0449%   0.0035%    0.0415%
+               80%        0.0514%   0.0069%    0.0445%
+              100%        0.0535%   0.0118%    0.0417%
 
-  best move: 30% of the way to target, net +0.0191% of NAV against +0.0535% if trading were free
+  best move: 80% of the way to target, net +0.0445% of NAV against +0.0535% if trading were free
 ```
 
 The optimiser wanted the whole move; at this fund size the whole move
@@ -366,11 +374,11 @@ and between runs, so rather than quote mine, run
   (LOBSTER type 5) and auction crosses are skipped by design, and snapshot
   seeding fixes opening depth without giving pre-window orders individual
   ids.
-- **Impact curves the wrong way.** Metaorder cost here is convex in size
-  (fitted exponent 1.2 to 1.5) where published estimates are concave (0.5 to
-  0.6). Nothing in the agent set replenishes liquidity in response to it
-  being consumed, which is the mechanism usually credited for the
-  concavity. See [`docs/validation.md`](docs/validation.md) §1.
+- **The price mean reverts too hard.** `VR(100)` is about 0.44 where a
+  random walk is 1.0, because the value trader pulls price back toward its
+  fundamental. Metaorder impact is measured net of that fundamental's own
+  drift (pass `reference=` to `execute_metaorder`); measure it without the
+  control and a drifting value gets billed as impact.
 - **One symbol per `Simulation`**, greedy partial fills, no pro-rata
   allocation, no fees.
 

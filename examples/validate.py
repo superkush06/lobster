@@ -32,6 +32,7 @@ import random
 import sys
 
 from lobster import Analytics, Order, OrderBook, Side, Simulation, SquareRootImpact
+from lobster.agents import ValueAgent
 from lobster.execution import cost_to_trade, execute_metaorder, fit_power_law
 from lobster.stylized import (
     ReturnFacts,
@@ -264,8 +265,12 @@ def check_impact_law(trials: int, warmup: int, seed: int) -> None:
         for total in sizes:
             sh, pk, half = [], [], []
             for t in range(trials):
-                sim = Simulation(agents=demo_agents(momentum=momentum),
-                                 seed=seed + t)
+                agents = demo_agents(momentum=momentum)
+                sim = Simulation(agents=agents, seed=seed + t)
+                # Net the metaorder's cost against the efficient price the
+                # agents quote off, so a drifting fundamental does not get
+                # counted as impact. Real studies do this against an index.
+                va = next((a for a in agents if isinstance(a, ValueAgent)), None)
                 for _ in sim.run(warmup):
                     pass
                 if sim.book.spread is None:
@@ -273,7 +278,9 @@ def check_impact_law(trials: int, warmup: int, seed: int) -> None:
                 half.append(sim.book.spread / 2.0)
                 mo = execute_metaorder(sim, Side.BUY, total, slice_qty=8,
                                        every=2, agent_id=99,
-                                       start_ts=float(warmup), decay_steps=200)
+                                       start_ts=float(warmup), decay_steps=200,
+                                       reference=(None if va is None
+                                                  else lambda va=va: va.value))
                 if mo.shortfall is not None:
                     sh.append(mo.shortfall)
                 if mo.peak_impact is not None:

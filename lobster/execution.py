@@ -21,7 +21,7 @@ and the literature routinely conflates them:
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -121,38 +121,62 @@ class Metaorder:
     end_mid: float | None
     decay_mid: float | None
     children: int
+    # Optional control series, sampled from `reference` at the same moments as
+    # the mids above. When the efficient price is itself moving, a metaorder's
+    # measured cost is part impact and part the market going somewhere while
+    # you traded. Real impact studies net that out against an index; a
+    # simulator can do better and net it out against the actual value the
+    # agents are quoting off. Leave these None and every figure below is the
+    # raw, uncontrolled one.
+    arrival_ref: float | None = None
+    mean_ref: float | None = None
+    end_ref: float | None = None
+    decay_ref: float | None = None
 
     @property
     def vwap(self) -> float | None:
         return self.notional / self.filled if self.filled else None
 
+    def _drift(self, later: float | None) -> float:
+        """How far the reference itself moved, or 0.0 when uncontrolled."""
+        if self.arrival_ref is None or later is None:
+            return 0.0
+        return later - self.arrival_ref
+
     @property
     def shortfall(self) -> float | None:
-        """Implementation shortfall per share against the arrival mid."""
+        """Implementation shortfall per share against the arrival mid.
+
+        Net of the reference's own drift over the execution window, when a
+        reference was supplied.
+        """
         v = self.vwap
         if v is None:
             return None
-        return self.side.value * (v - self.arrival_mid)
+        return self.side.value * (v - self.arrival_mid - self._drift(self.mean_ref))
 
     @property
     def peak_impact(self) -> float | None:
         """Mid displacement measured at the last child fill."""
         if self.end_mid is None:
             return None
-        return self.side.value * (self.end_mid - self.arrival_mid)
+        return self.side.value * (self.end_mid - self.arrival_mid
+                                  - self._drift(self.end_ref))
 
     @property
     def permanent_impact(self) -> float | None:
         """Mid displacement still there `decay_steps` after the last child."""
         if self.decay_mid is None:
             return None
-        return self.side.value * (self.decay_mid - self.arrival_mid)
+        return self.side.value * (self.decay_mid - self.arrival_mid
+                                  - self._drift(self.decay_ref))
 
 
 def execute_metaorder(sim: Simulation, side: Side, total_qty: int, slice_qty: int, *,
                       every: int = 1, agent_id: int = 0,
                       start_ts: float = 0.0, dt: float = 1.0,
-                      decay_steps: int = 0) -> Metaorder:
+                      decay_steps: int = 0,
+                      reference: Callable[[], float] | None = None) -> Metaorder:
     """Work `total_qty` into a running `Simulation` as child market orders.
 
     The simulation is stepped forward; every `every` ticks a `slice_qty`
@@ -163,6 +187,12 @@ def execute_metaorder(sim: Simulation, side: Side, total_qty: int, slice_qty: in
 
     `agent_id` should be an id no agent in `sim` owns, unless you deliberately
     want the parent to interact with that agent's self-trade prevention.
+
+    `reference` is an optional callable returning the efficient price the
+    market is quoting off (in this package, a `ValueAgent`'s `value`). Supply
+    it and the reported impact is net of wherever that price wandered while
+    the parent was working, which is the difference between measuring impact
+    and measuring impact plus whatever else happened.
     """
     if total_qty <= 0 or slice_qty <= 0:
         raise ValueError("total_qty and slice_qty must be positive")
@@ -171,6 +201,9 @@ def execute_metaorder(sim: Simulation, side: Side, total_qty: int, slice_qty: in
     arrival = sim.book.mid
     if arrival is None:
         raise ValueError("simulation book has no mid; warm it up first")
+    arrival_ref = reference() if reference is not None else None
+    ref_weighted = 0.0            # sum of reference * child size
+    end_ref = None
     filled, notional, children = 0, 0.0, 0
     requested = 0
     k = 0
@@ -191,15 +224,26 @@ def execute_metaorder(sim: Simulation, side: Side, total_qty: int, slice_qty: in
             children += 1
             if sim.book.mid is not None:
                 end_mid = sim.book.mid
+            if reference is not None:
+                end_ref = reference()
+                # size-weighted, to line up with the size-weighted VWAP
+                ref_weighted += end_ref * want
         k += 1
     decay_mid = None
     for j in range(decay_steps):
         sim.step(ts=start_ts + (k + j) * dt, dt=dt)
+    decay_ref = None
     if decay_steps:
         decay_mid = sim.book.mid
+        if reference is not None:
+            decay_ref = reference()
     return Metaorder(side=side, requested=requested, filled=filled,
                      notional=notional, arrival_mid=arrival, end_mid=end_mid,
-                     decay_mid=decay_mid, children=children)
+                     decay_mid=decay_mid, children=children,
+                     arrival_ref=arrival_ref,
+                     mean_ref=(ref_weighted / requested
+                               if reference is not None and requested else None),
+                     end_ref=end_ref, decay_ref=decay_ref)
 
 
 def fit_power_law(xs: Sequence[float],

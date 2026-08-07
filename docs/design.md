@@ -82,17 +82,24 @@ thresholds. Over 100,000 ticks of the bundled demo config:
 
 | fact | verdict | evidence |
 |---|---|---|
-| bid-ask bounce in trade prices | reproduced | lag-1 autocorrelation of trade-price changes = -0.370, against Roll's floor of -1/2 |
-| humped depth profile | reproduced | mean depth peaks 0.43 from the mid; the innermost bin holds 2.1% of the peak |
-| long memory of order flow | partial | sign autocorrelation +0.071 at lag 1, inside the noise band by lag 69; real flow decays as a power law and never dies |
-| mid price is a martingale | fails | VR(100) = 10.6 with the momentum agent, 1.54 without it |
+| bid-ask bounce in trade prices | reproduced | lag-1 autocorrelation of trade-price changes = -0.245, against Roll's floor of -1/2 |
+| humped depth profile | reproduced | mean depth peaks 1.28 from the mid; the innermost bin holds 5.2% of the peak |
+| long memory of order flow | partial | decay exponent 0.52 without the chaser, against a published 0.5, but gone by lag 128 where real flow lasts thousands of trades |
+| mid price is a martingale | fails | VR(100) = 0.45 with the momentum agent, 0.43 without it |
 
-The two failures have a common cause and it is worth naming rather than
-tuning away: there is no agent with a *view*. Nothing anchors the price, so
-the trend chaser compounds unopposed; and nothing works a parent order over
-many ticks, so the only source of order-flow memory is a single agent's
-20-trade window. An informed trader and a metaorder agent are the two
-additions that would move these rows.
+An earlier version of this table named the common cause of its failures:
+there was no agent with a *view*, so nothing anchored the price and nothing
+worked a parent order over many ticks. `ValueAgent` supplies the first half
+of that. It ladders passive size around a fundamental with depth growing
+linearly in distance, which is what turned metaorder cost from convex to
+concave, and being consumed rung by rung it also gives order-flow memory the
+right decay exponent.
+
+It overshot on the price process. The martingale row failed super-diffusively
+before (VR 10.6) and now fails sub-diffusively (0.45), because the ladder
+pulls price back toward its fundamental harder than a real book does. A
+metaorder agent drawing heavy-tailed parent sizes is the remaining addition,
+and it is what the memory *horizon* needs.
 
 The depth hump deserves the same caution. Its location tracks
 `NoiseAgent(spread_offset=...)` and `MarketMakerAgent(half_spread=...)`
@@ -116,9 +123,10 @@ Two results from there bear on the design directly. The estimators in
 except `variance_ratio`, which is biased low by roughly q/T because it uses
 population variances with no small-sample correction — read `VR` at long
 horizons on short series with that in mind. And emergent impact in this
-simulator is *convex* in size (fitted exponent 1.2 to 1.5) where the
-published metaorder estimates are concave (0.5 to 0.6); the cause is that no
-agent here replenishes liquidity in response to it being consumed.
+simulator is concave in size at a fitted exponent of 0.57, against published
+metaorder estimates of 0.5 to 0.6. That depends on `ValueAgent` being in the
+mix: it is the only thing here that replenishes liquidity in response to
+being consumed, and without it the exponent is 1.2 to 1.5.
 
 ## Execution costs
 

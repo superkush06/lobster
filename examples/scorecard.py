@@ -21,7 +21,12 @@ import math
 from dataclasses import dataclass
 
 from lobster import Simulation
-from lobster.agents import MarketMakerAgent, MomentumAgent, NoiseAgent
+from lobster.agents import (
+    MarketMakerAgent,
+    MomentumAgent,
+    NoiseAgent,
+    ValueAgent,
+)
 from lobster.stylized import StylizedFacts, depth_profile, trade_prices
 
 BIN, MAXD = 0.05, 1.5
@@ -58,6 +63,9 @@ def demo_agents(*, momentum: bool) -> list:
                                     qty=5, max_position=100))
     agents.append(MarketMakerAgent(agent_id=4, half_spread=0.4, qty=12,
                                    inv_skew=0.02))
+    # The latent-liquidity side of the book. Without it nothing here resists a
+    # metaorder and cost comes out convex in size; see docs/validation.md 2c.
+    agents.append(ValueAgent(agent_id=5, value=100.0))
     return agents
 
 

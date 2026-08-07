@@ -142,14 +142,16 @@ The full curves say something the single number cannot:
 - **Trade prices** start at $0.63$, bottom out near $0.48$ around $q = 5$,
   then climb back through 1 somewhere between $q = 20$ and $q = 50$. Bounce
   dominates at short horizons; the underlying drift takes over at long ones.
-- **Mid prices** never mean-revert — there is no bounce in a mid — but with
-  the momentum agent in the mix they super-diffuse badly: $VR(100) = 10.6$.
-  Remove the chaser and it falls to $1.54$.
+- **Mid prices** have no bounce in them, and they sub-diffuse:
+  $VR(100) = 0.45$ with the momentum agent and $0.43$ without it. The value
+  trader pulls price back toward its fundamental, so the mid mean reverts.
 
-$VR(100) = 10.6$ is a failing grade, and it is worth being blunt about why.
-The chaser reads imbalance off the tape and then prints on the same tape;
-nothing in the agent set pushes back. Real markets have that pushback —
-statistical arbitrageurs, informed traders with a level in mind, hedgers
+$VR(100) = 0.45$ is a failing grade, and it is worth being blunt about why.
+An earlier version of this package scored $10.6$, badly *super*-diffusive:
+the chaser read imbalance off the tape and printed on the same tape, and
+nothing pushed back. `ValueAgent` is that pushback, and it overshot. Real
+markets have it in a measure this one does not: statistical
+arbitrageurs, informed traders with a level in mind, hedgers
 selling into strength — and this one does not. See §10.
 
 ---
@@ -170,13 +172,13 @@ $\alpha$, the resulting sign autocorrelation inherits $\gamma = \alpha - 1$.
 Long memory in the tape is the shadow of a heavy-tailed distribution of
 trading intentions.
 
-`lobster` reproduces the sign, not the shape. With the momentum agent the
-sign autocorrelation starts at $+0.071$ — about half the $0.15\,\ell^{-1/2}$
-reference the plot draws — crosses that reference near lag 10, stays within
-about 50% of it out to lag 50, and then drops into the noise band and stops,
-at lag 69. Fitted over the positive lags the decay exponent is $0.94$
-against the $\gamma \approx 0.5$ of real flow. Remove the chaser and there
-is no memory at all: signs are coin flips from lag 1.
+`lobster` reproduces the shape over a horizon far shorter than the real one.
+Without the momentum agent the fitted decay exponent is $0.52$, against the
+$\gamma \approx 0.5$ of real flow, and the sign autocorrelation stays
+positive out to lag 128. The source is `ValueAgent`: a ladder eaten rung by
+rung is a split parent order, which is the Lillo-Mike-Farmer mechanism. Add
+the chaser back and its 20-trade window imposes its own timescale, pushing
+the exponent to $1.29$ and killing the memory by lag 89.
 
 That is the correct diagnosis of a modelling gap. Memory here comes from one
 agent with a 20-trade window, so it necessarily dies at a horizon set by
@@ -264,14 +266,15 @@ is *emergent*: a market order eats through resting depth and the touch moves
 because the levels it consumed are gone. These estimators are for pre-trade
 sizing, and keeping them out of the engine keeps the engine honest.
 
-The emergent impact is measurable, and it is worth knowing that it comes out
-*convex*. `lobster.execution` walks the book read-only (`cost_to_trade`) and
-works parent orders into a live run (`execute_metaorder`); fitting a power
-law to the resulting shortfall gives an exponent of 1.2 to 1.5, not 0.5. The
-machinery is not at fault — on a synthetic book whose depth grows linearly
-with distance, which implies a square-root law analytically, the same fit
-returns 0.504. What is missing is liquidity that regenerates in response to
-being consumed. `validation.md` §1 has the numbers and the argument.
+The emergent impact is measurable, and it comes out concave.
+`lobster.execution` walks the book read-only (`cost_to_trade`) and works
+parent orders into a live run (`execute_metaorder`); fitting a power law to
+the resulting shortfall gives an exponent of $0.57$, against the $0.5$ to
+$0.6$ of published metaorder studies. It depends entirely on `ValueAgent`
+being in the mix. Take the value trader out and the same fit returns 1.2 to
+1.5, convex, because nothing then regenerates liquidity in response to being
+consumed. `validation.md` has the numbers, the mechanism and the
+calibration.
 
 ---
 

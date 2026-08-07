@@ -101,67 +101,99 @@ almost every disagreement below traces back to that one agent.
 
 | claim | our value (demo / no chaser) | reference value | source | agrees |
 |---|---|---|---|---|
-| returns are heavy-tailed: excess kurtosis > 0 | 256.75 / 10.89 | positive, large | Cont (2001) | yes |
-| tail index of \|r\| | 1.84 / 3.29 | 2 to 5 | Cont (2001) | no / yes |
-| aggregational Gaussianity: kurtosis falls with aggregation | 92.21 vs 256.75 / 16.14 vs 10.89 | falls toward 0 | Cont (2001) | yes / no |
-| returns are close to linearly uncorrelated | +0.0982 / +0.0279 | ~0 | Cont (2001) | no / yes |
-| volatility clustering: rho(\|r\|) at lag 1 | +0.2675 / +0.1305 | positive | Cont (2001) | yes |
-| ... still positive at lag 100 | +0.0520 / +0.0098 | positive, slow decay | Cont (2001) | yes |
-| decay exponent of rho(\|r\|) | 0.55 / 0.83 | below 1 | Cont (2001) | yes |
+| returns are heavy-tailed: excess kurtosis > 0 | 13.92 / 13.32 | positive, large | Cont (2001) | yes |
+| tail index of \|r\| | 2.75 / 3.02 | 2 to 5 | Cont (2001) | yes |
+| aggregational Gaussianity: kurtosis falls with aggregation | 2.70 vs 13.92 / 4.73 vs 13.32 | falls toward 0 | Cont (2001) | yes |
+| returns are close to linearly uncorrelated | -0.0584 / -0.0586 | ~0 | Cont (2001) | no |
+| volatility clustering: rho(\|r\|) at lag 1 | +0.1316 / +0.1154 | positive | Cont (2001) | yes |
+| ... still positive at lag 100 | +0.0430 / +0.0399 | positive, slow decay | Cont (2001) | yes |
+| decay exponent of rho(\|r\|) | 0.29 / 0.22 | below 1 | Cont (2001) | yes |
 
 ### Microstructure
 
 | claim | our value (demo / no chaser) | reference value | source | agrees |
 |---|---|---|---|---|
-| bid-ask bounce: lag-1 autocorrelation of trade-price changes | -0.370 / -0.461 | in [-1/2, 0) | Roll (1984) | yes |
-| order-flow sign memory: power-law exponent | 0.94 / no memory | ~0.5 | Bouchaud et al. (2004) | no |
-| order-flow memory horizon | 69 trades / 0 | thousands of trades | Bouchaud et al. (2004) | no |
-| mean depth peaks away from the touch | 0.43 away, touch holds 2.1% / 1.6% of the peak | peak away from the touch | Bouchaud, Mezard & Potters (2002) | yes |
-| a passive market maker is adversely selected | -0.42518 / -0.05490 | negative markout | Glosten & Milgrom (1985) | yes |
-| metaorder cost exponent (net of half-spread) | 1.30 / 1.23 | 0.5 to 0.6 | Almgren et al. (2005); Gatheral (2010) | no |
-| metaorder peak-impact exponent | 1.47 / 1.28 | 0.5 to 0.6 | Almgren et al. (2005) | no |
+| bid-ask bounce: lag-1 autocorrelation of trade-price changes | -0.245 / -0.253 | in [-1/2, 0) | Roll (1984) | yes |
+| order-flow sign memory: power-law exponent | 1.29 / 0.52 | ~0.5 | Bouchaud et al. (2004) | no / yes |
+| order-flow memory horizon | 89 / 128 trades | thousands of trades | Bouchaud et al. (2004) | no |
+| mean depth peaks away from the touch | 1.28 away, touch holds 5.2% / 5.4% of the peak | peak away from the touch | Bouchaud, Mezard & Potters (2002) | yes |
+| a passive market maker is adversely selected | -0.01745 / -0.02974 | negative markout | Glosten & Milgrom (1985) | yes |
+| metaorder cost exponent (net of half-spread) | 0.57 / 0.58 | 0.5 to 0.6 | Almgren et al. (2005); Gatheral (2010) | yes |
+| metaorder peak-impact exponent | 0.54 / 0.60 | 0.5 to 0.6 | Almgren et al. (2005) | yes |
 
-Across the two tables: seven rows agree, four disagree outright, and three
-agree for one agent mix and not the other. The next section is about the
-seven that are not clean wins, because a validation document that only lists
+Across the two tables: eleven rows agree, two disagree outright, and one
+agrees for one agent mix and not the other. The next section is about the
+ones that are not clean wins, because a validation document that only lists
 its wins is a brochure.
 
 ---
 
-## Where this does not match reality, and why
+## The row that used to fail, and what fixed it
 
-### 1. Impact is convex here and concave in the world. (The big one.)
+Earlier versions of this document opened with a section titled *"Impact is
+convex here and concave in the world. (The big one.)"* The metaorder cost
+exponent came out between 1.23 and 1.47, meaning cost grew faster than
+linearly in size, when the empirical square-root law puts it near 0.5. That
+was the wrong sign of curvature, and Part 1c ruled out the estimator as the
+culprit by recovering 0.504 from a book engineered to have a square-root law.
 
-The square-root law — the cost of a metaorder growing like the square root
-of its size relative to volume — is about as robust as empirical finance
-gets. Almgren, Thum, Hauptmann and Li (2005) estimate a temporary-impact
-exponent near 3/5 directly from institutional order data; Gatheral (2010)
-works out what decay kernel an exponent of 1/2 has to be paired with for the
-model to be free of dynamic arbitrage. Either way the number is well below
-one, and the practical consequence is that splitting a large order helps
-less than a linear model promises.
+The diagnosis in that section was that nothing here replenished liquidity in
+response to being consumed. Every agent quoted off the *mid*, so a parent
+order that walked the book was chased by a market maker re-quoting around a
+mid the parent had already moved. The section ended by naming the missing
+piece: an informed trader with a view on value, who supplies liquidity into a
+price it thinks is wrong.
 
-This simulator produces an exponent of **1.23 to 1.47**, i.e. cost that is
-*convex* in size. Trading twice as much costs more than twice as much. That
-is the opposite sign of curvature, and it is not a measurement artifact —
-Part 1c shows the same estimator recovering 0.504 from a book engineered to
-have a square-root law.
+`ValueAgent` is that trader. It ladders passive size around a fundamental
+value, with size at each rung growing linearly with distance from it, and
+tops the ladder up at a bounded rate. The shape is the whole mechanism:
 
-The reason is that nothing here replenishes liquidity in response to being
-consumed. In a real book the resting quantity is the visible tip of a much
-larger reservoir of latent intentions, and a metaorder that walks the book
-pulls fresh liquidity in behind it — the mechanism the modern literature
-credits for the concavity. Here there are two noise traders and a market
-maker quoting a fixed half-spread off the mid: as the parent eats depth, the
-maker re-quotes around a mid that has already moved, so the parent chases
-its own footprint. Add the momentum agent and it is worse, because that
-agent trades *with* the footprint.
+    depth at distance d from value  ~  slope * d
+    shares available within D       ~  slope * D^2 / 2
+    so to buy Q you must walk       D ~ sqrt(2Q / slope)
 
-An informed trader — one with a view on value, who supplies liquidity into a
-price it thinks is wrong — is the missing piece, and it is the same missing
-piece as in items 2 and 3.
+which is the square-root law, and it is the same profile Part 1c already
+showed the estimator scoring at 0.504. Partial resilience matters as much as
+the shape. The ladder refills at `refill` shares per tick, so a parent that
+consumes faster than that outruns replenishment and walks outward into the
+thicker rungs. Cancel and replace the whole ladder every tick instead and the
+book becomes perfectly elastic: price snaps back between children and impact
+vanishes, which is as wrong as the convex answer in the other direction.
+Raising `slope` or `refill` far enough does the same thing more gently, and
+drives the exponent back toward 1.
 
-### 2. Order-flow memory dies at the chaser's lookback.
+Two measurement notes, because both change the answer:
+
+* The fundamental random-walks (`value_drift`). Without it the price is
+  pinned to a constant, `VR(100)` collapses to 0.04, excess kurtosis falls to
+  4 and the tail index leaves the 2-to-5 band. Realistic returns need a
+  moving efficient price.
+* Once it moves, impact has to be measured against it. `execute_metaorder`
+  takes a `reference` callable and reports cost net of wherever the efficient
+  price wandered while the parent worked. Real studies do this against an
+  index; a simulator can do it against the actual value the agents quote off.
+  Skip the control and the same runs score 0.33 and -0.26 at a drift of 0.03,
+  which is noise rather than a measurement.
+
+The result is 0.57 and 0.58 for cost net of half-spread, 0.54 and 0.60 for
+peak impact, across the two mixes. Those parameters were calibrated to land
+there, which is worth saying plainly: the *mechanism* is what makes cost
+concave at all, and `slope` and `refill` are what set where in the concave
+range it lands.
+
+Three other rows moved with it, none of them targeted. The tail index went
+from 1.84 to 2.75 and entered Cont's band; aggregational Gaussianity started
+holding for both mixes instead of one; and order-flow memory without the
+chaser went from nothing at all to a decay exponent of 0.52, against the
+0.5 the literature reports. That last one is the Lillo-Mike-Farmer mechanism
+appearing by accident: a ladder consumed rung by rung is a split parent
+order, which is exactly what they identify as the source of sign memory.
+
+---
+
+## Where this still does not match reality, and why
+
+### 1. Order-flow memory is far too short.
 
 Real trade signs stay positively autocorrelated out to thousands of trades,
 decaying like a power law with exponent around 0.5 (Bouchaud, Gefen, Potters
@@ -169,57 +201,44 @@ and Wyart 2004). Lillo, Mike and Farmer (2005) show why: institutions split
 parent orders, parent sizes are heavy-tailed with exponent alpha, and the
 sign autocorrelation inherits gamma = alpha - 1.
 
-Here the exponent is 0.94 and the memory is gone by lag 69 — and remove the
-momentum agent and there is no memory at all, signs are coin flips from lag
-1. That is exactly the diagnosis the Lillo-Mike-Farmer mechanism predicts
-for a simulator with no parent orders in it: the only source of persistence
-is one agent with a 20-trade window, so the memory necessarily expires at a
-horizon that window sets.
+Without the chaser the exponent is now 0.52, which is the right number. The
+horizon is still wrong: memory is gone by lag 128, against thousands of
+trades in real flow. And with the chaser in the mix the exponent is 1.29,
+because a 20-trade lookback imposes its own timescale on top. The ladder
+supplies persistence of the right shape at the wrong length, since its rungs
+are consumed over tens of trades rather than the hours a real parent order
+takes. Heavy-tailed parent sizes are the missing ingredient, and nothing here
+draws one.
 
-### 3. The mid is not a martingale, and the tail is too fat.
+### 2. Returns are slightly negatively autocorrelated.
 
-With the chaser in the mix the lag-1 return autocorrelation is +0.098 and
-`VR(100)` is 10.6 (see `docs/theory.md` §4). Cont's first stylized fact is
-that returns show *no* significant linear autocorrelation beyond a few
-minutes; ours show plenty, in the same direction, at every horizon. The tail
-index falls to 1.84, below the 2-to-5 band Cont reports and low enough to
-imply infinite variance, which is not a claim anybody makes about equity
-returns.
+Cont's first stylized fact is that returns show no significant linear
+autocorrelation. The lag-1 return autocorrelation here is -0.058 in both
+mixes. It is small, and it is at least no longer the +0.098 the chaser used
+to produce, but the sign is now systematic rather than absent: the value
+trader pulls price back toward the fundamental, and that mean reversion shows
+up at lag 1. `VR(100)` tells the same story from the other end, 0.45 and 0.43
+against 1.0 for a random walk. The old failure was a price that trended too
+much; this one is a price that reverts too much, and the honest reading is
+that neither version has the balance right.
 
-Take the chaser out and both go away: lag-1 autocorrelation +0.028, tail
-index 3.29, `VR(100)` 1.54. So this failure is one agent's, and it is a
-trend-follower with nothing on the other side of it. Real markets have
-mean-reverting flow — statistical arbitrage, hedgers selling into strength —
-and this agent set has none.
-
-### 4. Volatility clustering is real here but for a thin reason.
+### 3. Volatility clustering is real here but for a thin reason.
 
 The absolute-return autocorrelation is positive out to lag 100 with a decay
-exponent of 0.55 (demo) and 0.83 (no chaser), which is the right shape and
+exponent of 0.29 (demo) and 0.22 (no chaser), which is the right shape and
 the right order of magnitude. Do not read too much into it. There is no
 stochastic-volatility mechanism in this simulator; the likeliest explanation
-is that trading *activity* clusters — the market maker's cancel-replace and
-the noise traders' arrival process bunch trades together, and bunched trades
-mean bunched price changes. The empirical fact is generally attributed to something
-richer than that, so this is the right answer arrived at by a shortcut — the
-same caveat that applies to the humped depth profile in `theory.md` §6.
+is that trading *activity* clusters, so bunched trades mean bunched price
+changes. The empirical fact is generally attributed to something richer than
+that, so this is the right answer arrived at by a shortcut, the same caveat
+that applies to the humped depth profile in `theory.md` section 6.
 
-### 5. Aggregational Gaussianity fails once the chaser is gone.
+### 4. Most returns are exactly zero.
 
-Cont (2001) notes that as returns are aggregated over longer intervals, the
-distribution moves toward Gaussian and excess kurtosis falls. In the demo
-mix it does — 256.75 at one tick, 92.21 at a hundred. Without the chaser it
-goes the wrong way, 10.89 to 16.14. With no trend to smooth out, the
-aggregate is dominated by rare multi-tick moves and gets *less* Gaussian.
-It is a small sample of a small effect and it is reported as a failure
-rather than dropped.
-
-### 6. Half the returns are exactly zero.
-
-About 54% of tick-to-tick mid returns in both mixes are exactly 0.0, because
-the mid only moves when the touch does. This inflates kurtosis mechanically
-— a distribution that is mostly a point mass at zero with occasional jumps
-has enormous fourth moments regardless of what the jumps look like. The
+About 61% of tick-to-tick mid returns in both mixes are exactly 0.0, because
+the mid only moves when the touch does. This inflates kurtosis mechanically:
+a distribution that is mostly a point mass at zero with occasional jumps has
+enormous fourth moments regardless of what the jumps look like. The
 excess-kurtosis figures in the first table should be read as "heavy-tailed,
 directionally right, magnitude not comparable with a daily equity series".
 Real tick data has the same property, which is one reason microstructure
