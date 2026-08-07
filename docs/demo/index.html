@@ -117,8 +117,7 @@
            font-size: 1rem; line-height: 1.55; color: #6E695E }
 
   /* ---- the hero -------------------------------------------------------- */
-  .hero { min-height: 88vh; display: flex; flex-direction: column;
-          justify-content: center; position: relative }
+  .hero { position: relative; padding-top: 5.5rem }
   .hero h1 { font-size: clamp(2.15rem, 5.9vw, 4.3rem); line-height: 1.04;
              letter-spacing: -.026em; text-wrap: balance }
   .hero .dek { font-size: clamp(1.15rem, 2.1vw, 1.6rem); max-width: 34rem }
@@ -160,7 +159,7 @@
 
   /* ---- an experiment opens ---------------------------------------------- */
   .open { margin-top: 7rem; padding-top: 2.4rem; border-top: 2px solid var(--ink) }
-  .sect-first { margin-top: 3.2rem }
+  .sect-first { margin-top: 4.2rem }
   .onum { font-family: "IBM Plex Mono", Menlo, monospace; font-weight: 500;
           font-size: clamp(3.4rem, 9vw, 5.6rem); line-height: .82; color: #C6BDAD;
           letter-spacing: -.03em; margin-bottom: .5rem }
@@ -213,7 +212,7 @@
   @media (max-width: 1180px) { nav { display: none } }
 
   @media (max-width: 640px) {
-    header { padding-top: 3rem } h1 { font-size: 2.1rem }
+    .hero { padding-top: 3rem } h1 { font-size: 2.1rem }
     .dek { font-size: 1.15rem } p { font-size: 1.1rem } .rig { gap: 1.6rem }
   }
 </style>
