@@ -116,6 +116,70 @@
   footer { margin: 4.5rem auto 7rem; padding-top: 1.4rem; border-top: 1px solid var(--hair);
            font-size: 1rem; line-height: 1.55; color: #6E695E }
 
+  /* ---- the hero -------------------------------------------------------- */
+  .hero { min-height: 88vh; display: flex; flex-direction: column;
+          justify-content: center; position: relative }
+  .hero h1 { font-size: clamp(2.4rem, 7.2vw, 5.1rem); line-height: 1.02;
+             letter-spacing: -.028em }
+  .hero .dek { font-size: clamp(1.15rem, 2.1vw, 1.6rem); max-width: 34rem }
+  .banner { display: flex; flex-wrap: wrap; gap: 1.7rem; margin-top: 3rem;
+            padding-top: 1.1rem; border-top: 1px solid var(--hair) }
+  .banner span { font-family: "IBM Plex Mono", Menlo, monospace; font-size: .68rem;
+                 text-transform: uppercase; letter-spacing: .085em; font-weight: 500;
+                 color: var(--quiet) }
+  .banner b { color: var(--ink); font-weight: 500 }
+  .cue { position: absolute; bottom: 1.6rem; left: 1.5rem; font-family: "IBM Plex Mono",
+         Menlo, monospace; font-size: .66rem; text-transform: uppercase;
+         letter-spacing: .085em; color: var(--quiet) }
+  @media (prefers-reduced-motion: no-preference) {
+    .cue { animation: drift 2.6s ease-in-out infinite }
+  }
+  @keyframes drift { 0%,100% { transform: translateY(0); opacity: .55 }
+                     50% { transform: translateY(5px); opacity: 1 } }
+
+  /* ---- an experiment opens ---------------------------------------------- */
+  .open { margin-top: 7rem; padding-top: 2.4rem; border-top: 2px solid var(--ink) }
+  .sect-first { margin-top: 3.2rem }
+  .onum { font-family: "IBM Plex Mono", Menlo, monospace; font-weight: 500;
+          font-size: clamp(3.4rem, 9vw, 5.6rem); line-height: .82; color: #C6BDAD;
+          letter-spacing: -.03em; margin-bottom: .5rem }
+  .open .m { display: block; margin-bottom: .55rem }
+  /* the sigma has a descender that .82 line-height drives into the kicker */
+  .onum.sum { font-size: clamp(2.7rem, 6vw, 4rem); line-height: 1.05;
+              margin-bottom: .25rem }
+  .open h2 { margin-top: 0 }
+  .thesis { font-size: 1.3rem; line-height: 1.45; color: #5E594F; font-weight: 300;
+            margin: .7rem 0 0; max-width: 33rem }
+
+  /* ---- and closes -------------------------------------------------------- */
+  .finding { border-left: 2px solid var(--ink); padding: .1rem 0 .1rem 1.35rem;
+             margin: 2.4rem 0 0 }
+  .finding > .m { display: block; margin-bottom: .5rem; color: var(--ink) }
+  .finding p { font-size: 1.18rem; line-height: 1.5; margin: 0; color: var(--ink) }
+  .endrule { max-width: 40rem; margin: 3.4rem auto 0; padding: 0 1.5rem }
+  .endrule div { height: 1px; background: var(--hair) }
+
+  /* ---- the scorecard ----------------------------------------------------- */
+  /* the table has a floor width; let it scroll in its own box rather than
+     pushing the page sideways */
+  .scroll { overflow-x: auto; margin-top: 1.8rem; -webkit-overflow-scrolling: touch }
+  .score { width: 100%; min-width: 30rem; border-collapse: collapse;
+           font-size: 1.02rem }
+  .score th { font-family: "IBM Plex Mono", Menlo, monospace; text-transform: uppercase;
+              letter-spacing: .085em; font-size: .66rem; font-weight: 500;
+              color: var(--quiet); text-align: left; padding: 0 .8rem .6rem 0;
+              border-bottom: 1px solid var(--hair) }
+  .score td { padding: .72rem .8rem .72rem 0; border-bottom: 1px solid var(--hair);
+              vertical-align: baseline }
+  .score td:first-child { font-family: "IBM Plex Mono", Menlo, monospace;
+                          font-size: .7rem; color: var(--quiet); width: 2.4rem }
+  .score .val { font-family: "IBM Plex Mono", Menlo, monospace; font-size: .88rem;
+                font-weight: 500; white-space: nowrap }
+
+  /* scroll progress, a single hairline */
+  #prog { position: fixed; top: 0; left: 0; height: 2px; width: 0;
+          background: var(--ink); opacity: .5; z-index: 9 }
+
   /* contents. Fixed, tiny, desktop only: enough to show the piece has a
      shape without putting furniture between the reader and the figures. */
   nav { position: fixed; top: 2rem; right: 1.6rem; z-index: 5; text-align: right }
@@ -142,15 +206,29 @@
   <a href="#four"><i>04</i>Book</a>
 </nav>
 
-<header class="text">
-  <span class="m">An experiment in price–time priority</span>
+<div id="prog"></div>
+
+<header class="text hero">
+  <span class="m">Four experiments on one order book</span>
   <h1>Latency buys<br>queue position</h1>
   <p class="dek">Two market makers post the same price. One sits closer to the exchange.
-    Nothing else about them differs.</p>
-  <div class="rule"></div>
+    Nothing else about them differs. Everything below is computed here, in this tab, by a
+    matching engine compiled to WebAssembly.</p>
+  <div class="banner">
+    <span><b>01</b> &nbsp;The queue</span>
+    <span><b>02</b> &nbsp;Impact</span>
+    <span><b>03</b> &nbsp;The tape</span>
+    <span><b>04</b> &nbsp;The book</span>
+  </div>
+  <span class="cue">Scroll &#8595;</span>
 </header>
 
-<div class="text sect-first" id="one">
+<div class="text open sect-first" id="one">
+  <div class="onum">01</div>
+  <span class="m">Experiment one of four &middot; the queue</span>
+  <h2>Who gets filled first</h2>
+  <p class="thesis">Two makers quote the same price in the same size. Does sitting closer to
+    the exchange buy anything, and if so, what exactly does it buy?</p>
   <p>An order book is a queue, and the only way to the front of a queue is to arrive early.
     Below is the bid side of one. Each row is a price; each block inside a row is a single
     resting order, drawn left to right in the order it will be filled. Most book views collapse
@@ -238,12 +316,19 @@
     Milgrom (1985)</a>; what the sliders add is that buying your way to the front of the queue
     buys you more of it.</p>
 
-  <p id="close"></p>
 </div>
 
-<div class="text sect" id="two">
-  <span class="m">Second experiment</span>
+
+<div class="text"><div class="finding"><span class="m">Finding &middot; experiment one</span>
+  <p id="close"></p></div></div>
+<div class="endrule"><div></div></div>
+
+<div class="text open" id="two">
+  <div class="onum">02</div>
+  <span class="m">Experiment two of four &middot; impact</span>
   <h2>What a big order costs</h2>
+  <p class="thesis">Cost grows like the square root of size in every market anyone has
+    measured. Does it here, and what in the book makes that happen?</p>
   <p>That was one order at a time. Now a different question, and a different set of agents in
     the book: you want to buy fifteen hundred lots, far more than is resting, so you cut it into
     eight-lot children and work them in. What do you pay per share, and how does that scale?</p>
@@ -274,7 +359,6 @@
     <span class="m" id="impState"></span>
   </div>
 </div>
-<div class="text"><p class="said" id="sImpact"></p></div>
 
 <div class="text">
   <p>Flip the switch and the law breaks. The only thing it removes is an agent that ladders
@@ -293,9 +377,15 @@
     between children, and impact vanishes instead, which is wrong in the other direction.</p>
 </div>
 
-<div class="text sect" id="three">
-  <span class="m">Third experiment</span>
+<div class="text"><div class="finding"><span class="m">Finding &middot; experiment two</span><p id="sImpact"></p></div></div>
+<div class="endrule"><div></div></div>
+
+<div class="text open" id="three">
+  <div class="onum">03</div>
+  <span class="m">Experiment three of four &middot; the tape</span>
   <h2>Does the tape look real?</h2>
+  <p class="thesis">Real returns have fat tails and clustered volatility. A simulator that
+    misses those is a toy, however good its plumbing.</p>
   <p>A simulator is worth reasoning with only if what comes out of it has the statistical shape
     of the thing it imitates. Two of those shapes are cheap to check and hard to fake. Real
     returns have <strong>heavy tails</strong>: the big moves are far more common than a bell
@@ -312,11 +402,25 @@
 <div class="wide">
   <figure><canvas id="clust"></canvas></figure>
 </div>
-<div class="text"><p class="said" id="sClust"></p></div>
 
-<div class="text sect" id="four">
-  <span class="m">Fourth experiment</span>
+<div class="text">
+  <p>Past the end of the side there is nothing to extrapolate with, so a sweep that cannot be
+    filled comes back marked incomplete and reports how much it managed, rather than inventing
+    a price for the remainder. That is the difference between this figure and the one above it.
+    Here the whole trade goes at once and pays what the book is asking; the second experiment
+    works the same quantity in over three hundred ticks and lets liquidity come back between
+    children. The gap between those two numbers is the reason execution algorithms exist.</p>
+</div>
+
+<div class="text"><div class="finding"><span class="m">Finding &middot; experiment three</span><p id="sClust"></p></div></div>
+<div class="endrule"><div></div></div>
+
+<div class="text open" id="four">
+  <div class="onum">04</div>
+  <span class="m">Experiment four of four &middot; the book</span>
   <h2>What the book charges, right now</h2>
+  <p class="thesis">The only question here that needs no simulation. Walking a resting book is
+    arithmetic, so this one answers as fast as you can drag.</p>
   <p>The first three questions all needed a simulation to run. This one does not. Below is a
     single frozen book, and buying against it is arithmetic: walk the ask side in price order,
     take what is resting at each level, stop when you have enough. That is what
@@ -341,19 +445,24 @@
     <span class="m" id="walkState"></span>
   </div>
 </div>
-<div class="text"><p class="said" id="sWalk"></p></div>
+<div class="text"><div class="finding"><span class="m">Finding &middot; experiment four</span><p id="sWalk"></p></div></div>
+<div class="endrule"><div></div></div>
 
-<div class="text">
-  <p>Past the end of the side there is nothing to extrapolate with, so a sweep that cannot be
-    filled comes back marked incomplete and reports how much it managed, rather than inventing
-    a price for the remainder. That is the difference between this figure and the one above it.
-    Here the whole trade goes at once and pays what the book is asking; the second experiment
-    works the same quantity in over three hundred ticks and lets liquidity come back between
-    children. The gap between those two numbers is the reason execution algorithms exist.</p>
+<div class="text open" id="all">
+  <div class="onum sum">&#8721;</div>
+  <span class="m">All four, together</span>
+  <h2>The scorecard</h2>
+  <p class="thesis">Every row below was computed in this tab while you scrolled. Rows still
+    reading <span class="n">not yet run</span> belong to a section you have not reached.</p>
+
+  <div class="scroll"><table class="score">
+    <thead><tr><th></th><th>What was measured</th><th>Here</th><th>Reference</th></tr></thead>
+    <tbody id="scoreBody"></tbody>
+  </table></div>
 </div>
 
 <div class="text">
-  <p>Three questions, one engine, and every number above computed while you read. The same
+  <p>Four questions, one engine, and every number above computed while you read. The same
     engine is scored against published results in
     <a href="https://github.com/superkush06/lobster/blob/main/docs/validation.md">validation.md</a>,
     where eleven of fourteen rows agree. The three that do not are written up rather than
@@ -800,7 +909,7 @@ async function computeWalk() {
 
 async function refreshWalk() {
   walkRes = await pyJSON(`sim.walk(${walkQty})`);
-  drawWalk(); sayWalk();
+  drawWalk(); sayWalk(); fillScore();
 }
 
 function sayWalk() {
@@ -824,6 +933,46 @@ function sayWalk() {
      <span class="n">${WALK.side_total.toLocaleString()}</span> across
      <span class="n">${WALK.n_side}</span> levels, and the sweep keeps walking past the bottom
      of the figure.`;
+}
+
+/* the closing scorecard, filled in as each experiment lands */
+const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+const SCORE = [
+  ["01", "Front of queue, faster maker", () => S && S.share.length >= 2
+      ? `${(mean(S.share) * 100).toFixed(0)}% over ${S.share.length} runs` : null,
+      "50% if latency bought nothing"],
+  ["01", "Runs where the faster maker also won on markout", () => {
+      if (!S || S.share.length < 2) return null;
+      const d = S.markout_fast.map((x, i) => x - S.markout_slow[i]);
+      return `${d.filter((x) => x > 0).length} of ${d.length}`;
+    }, "no reliable edge either way"],
+  ["02", "Cost exponent, latent liquidity on", () => IMP.on.fit
+      ? IMP.on.fit.exponent.toFixed(2) : null, "0.5 to 0.6 (Almgren, Gatheral)"],
+  ["02", "Cost exponent, latent liquidity off", () => IMP.off.fit
+      ? IMP.off.fit.exponent.toFixed(2) : null, "above 1 is the wrong curvature"],
+  ["03", "Excess kurtosis of returns", () => TAPE ? TAPE.kurtosis.toFixed(1) : null,
+      "positive and large (Cont)"],
+  ["03", "Hill tail index", () => TAPE && TAPE.tail_index
+      ? TAPE.tail_index.toFixed(2) : null, "2 to 5 (Cont)"],
+  ["03", "Volatility clustering, decay exponent", () => TAPE && TAPE.decay
+      ? TAPE.decay.toFixed(2) : null, "below 1 is long memory"],
+  ["04", "Ask side walked read-only", () => WALK
+      ? `${WALK.side_total.toLocaleString()} lots, ${WALK.n_side} levels` : null,
+      "microseconds, no simulation"],
+];
+
+function fillScore() {
+  const b = $("#scoreBody");
+  if (!b) return;
+  b.innerHTML = SCORE.map(([n, what, get, ref]) => {
+    let v = null;
+    try { v = get(); } catch (e) { v = null; }
+    const cell = v === null
+      ? '<span style="color:var(--quiet)">not yet run</span>'
+      : `<span class="val">${v}</span>`;
+    return `<tr><td>${n}</td><td>${what}</td><td>${cell}</td>` +
+           `<td style="color:#6E695E">${ref}</td></tr>`;
+  }).join("");
 }
 
 const redraw = () => {
@@ -926,7 +1075,7 @@ async function simulate() {
     S.fills_slow.push(r.fills_slow);
     S.curves.push(r.lead_curve);
     $("#boot").textContent = `run ${S.share.length + 1} of ${SEEDS.length + 1}`;
-    drawLead(); drawMark(); writeCopy();
+    drawLead(); drawMark(); writeCopy(); fillScore();
     await yieldToPaint();
   }
   $("#boot").textContent =
@@ -950,7 +1099,6 @@ function writeCopy() {
   const fB = gap > 0 ? D.fills_slow : D.fills_fast;
 
   // the sweep, not the single run, is what any claim gets to rest on
-  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
   const sd = (a) => {
     const mu = mean(a);
     return Math.sqrt(a.reduce((s, x) => s + (x - mu) ** 2, 0) / (a.length - 1));
@@ -1045,7 +1193,7 @@ async function computeImpact() {
     IMP[key].fit = await pyJSON(
       `sim.impact_fit(list(sim.IMPACT_SIZES)[:${IMP[key].costs.length}], `
       + `${JSON.stringify(IMP[key].costs)})`);
-    drawImpact(); sayImpact();
+    drawImpact(); sayImpact(); fillScore();
   }
   $("#impNote").textContent = `${SIZES_IMP.length * 2 * 3} parent orders worked`;
   runs += SIZES_IMP.length * 2 * 3;
@@ -1086,7 +1234,7 @@ async function computeTape() {
   }
   Object.assign(TAPE, await pyJSON("sim.tape_finish()"));
   runs += 1; tally();
-  drawTails(); drawClust();
+  drawTails(); drawClust(); fillScore();
   const t = TAPE;
   $("#sTails").innerHTML =
     `Excess kurtosis <span class="n">${t.kurtosis}</span>, against
@@ -1139,6 +1287,25 @@ function watch(sel, go) {
   }, { rootMargin: "300px" });
   io.observe(el);
 }
+
+// which experiment you are in, and how far through
+(function chrome() {
+  const links = [...document.querySelectorAll("nav a")];
+  const ids = links.map((a) => a.getAttribute("href").slice(1));
+  const bar = $("#prog");
+  const onScroll = () => {
+    const h = document.body.scrollHeight - innerHeight;
+    bar.style.width = (h > 0 ? Math.min(1, scrollY / h) * 100 : 0) + "%";
+    let cur = 0;
+    ids.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (el && el.getBoundingClientRect().top < innerHeight * .45) cur = i;
+    });
+    links.forEach((a, i) => a.classList.toggle("here", i === cur));
+  };
+  addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
 
 addEventListener("resize", redraw);
 document.fonts.ready.then(redraw);
