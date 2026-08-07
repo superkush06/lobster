@@ -162,6 +162,17 @@ class OrderBook:
                         f"ask {order.price} crosses best bid {bb}; "
                         f"use match() for marketable orders"
                     )
+        # An id is how every later operation finds this order: cancel, reduce,
+        # queue position, the replay index. Reusing one silently overwrites
+        # that pointer, and the first order stays resting on its level with
+        # nothing able to reach it. `len()` and `cancel()` then disagree with
+        # the book, which is the same class of corruption a crossed book is,
+        # so it is refused the same way.
+        if order.id in self._index:
+            raise ValueError(
+                f"order id {order.id} is already resting; ids must be unique "
+                f"while an order is on the book"
+            )
         if order.is_buy:
             levels, prices = self._bids, self._bid_prices
             key = -order.price

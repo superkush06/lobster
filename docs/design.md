@@ -2,7 +2,7 @@
 
 What the simulator does and the invariants it holds. For *why*, meaning the
 derivations, the estimators and the honest reading of what the dynamics do
-and do not reproduce, see [`theory.md`](theory.md).
+and don't reproduce, see [`theory.md`](theory.md).
 
 ## Modeling assumptions
 
@@ -25,7 +25,7 @@ and do not reproduce, see [`theory.md`](theory.md).
   `stp=None` disables prevention (match() alone also defaults to none).
 - **Order TTL**: `Order.ttl` is an optional lifetime; the sim cancels the
   resting remainder once it expires. `NoiseAgent` quotes default to
-  `ttl=50` ticks so passive flow does not thicken the book without bound.
+  `ttl=50` ticks so passive flow doesn't thicken the book without bound.
 - **No fees / taxes**. Agent P&L is cash + inventory * last_mid.
 - **Partial cancels** are supported via `OrderBook.reduce(order_id, qty)`
   (used by replay for LOBSTER type-2/type-4 events); `cancel(order_id)`
@@ -70,9 +70,9 @@ and do not reproduce, see [`theory.md`](theory.md).
 - Seed the opening book from the companion orderbook file with
   `OrderBook.from_snapshot(bids, asks)` (one synthetic order per level).
   Note that snapshot seeding fixes opening *depth* but pre-window order
-  ids still cannot be matched individually.
+  ids still can't be matched individually.
 - Replay reconstructs the *visible* book only; hidden-order executions
-  (type 5) and auction crosses (type 6) do not change the visible book.
+  (type 5) and auction crosses (type 6) don't change the visible book.
 
 ## Stylized facts
 
@@ -99,11 +99,11 @@ It overshot on the price process. The martingale row failed super-diffusively
 before (VR 10.6) and now fails sub-diffusively (0.45), because the ladder
 pulls price back toward its fundamental harder than a real book does. A
 metaorder agent drawing heavy-tailed parent sizes is the remaining addition,
-and it is what the memory *horizon* needs.
+and it's what the memory *horizon* needs.
 
 The depth hump deserves the same caution. Its location tracks
 `NoiseAgent(spread_offset=...)` and `MarketMakerAgent(half_spread=...)`
-rather than emerging from adverse selection, so it is the right shape
+rather than emerging from adverse selection, so it's the right shape
 obtained the wrong way.
 
 Figures: `python examples/make_figures.py` writes `docs/book_depth.png`,
@@ -134,13 +134,13 @@ being consumed, and without it the exponent is 1.2 to 1.5.
 
 - `cost_to_trade(book, side, qty)` walks the resting book **without
   mutating it** and reports what a market order would pay, the mid it would
-  leave behind, and whether the book had enough depth. It is asserted in the
+  leave behind, and whether the book had enough depth. It's asserted in the
   property tests to agree exactly with running the same order through
   `match()`.
 - `execute_metaorder(sim, ...)` works a parent order into a *running*
   simulation in child slices, so the book refills between children and the
   other agents react. This is the object comparable with the empirical
-  impact literature; a single sweep of a static book is not.
+  impact literature; a single sweep of a static book isn't.
 - `fit_power_law(xs, ys)` is the log-log OLS both are summarised by.
 
 ## Known limitations

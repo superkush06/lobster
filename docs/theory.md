@@ -1,6 +1,6 @@
 # lobster: the reasoning behind the code
 
-`design.md` says what the simulator does. This says why it is worth doing
+`design.md` says what the simulator does. This says why it's worth doing
 that way, and what the numbers it prints actually mean. Every figure quoted
 below comes from a run you can reproduce: `examples/scorecard.py` prints the
 stylized-facts verdicts *and* the spread block (the lag-1 autocovariance of
@@ -14,7 +14,7 @@ question of whether any of it matches published measurements, and
 
 ## 1. The queue is the model
 
-A limit order book is not a price. It is two priority queues, and almost
+A limit order book isn't a price. It's two priority queues, and almost
 everything interesting about electronic markets follows from how you get to
 the front of one.
 
@@ -24,11 +24,11 @@ So an order's fate is determined by one number: the volume resting ahead of
 it at its own level, $Q_{\text{ahead}}$. If aggressive volume arrives and
 the queue in front is never cancelled, the order fills once cumulative
 incoming volume exceeds $Q_{\text{ahead}}$. Cancellations ahead help you;
-new arrivals behind you do not.
+new arrivals behind you don't.
 
 This is why the book here stores a `deque` of individual `Order` objects per
 `PriceLevel` rather than a single aggregated size. Aggregate depth is enough
-to compute a mid, a spread or an imbalance; it is not enough to answer *will
+to compute a mid, a spread or an imbalance; it isn't enough to answer *will
 my order fill*, which is the question the package exists for.
 `Analytics.queue_position` is the corresponding one-liner, and the
 alternative, reconstructing queue position from L2 depth snapshots, is a
@@ -37,7 +37,7 @@ well-known source of quiet error in backtests.
 Two consequences shape the rest of the design:
 
 - **Matching must be the only path to a fill.** `OrderBook.add()` rejects an
-  order that crosses the opposite side, because a book that is allowed to
+  order that crosses the opposite side, because a book that's allowed to
   cross has a negative spread and a meaningless mid, and every statistic
   downstream inherits the nonsense. Marketable orders go through `match()`.
 - **Trades must carry identity.** A `Trade` records `buyer_id` and
@@ -52,13 +52,13 @@ Consider two market makers reacting to the same event at time $t$, both
 wanting to quote at the same price. Maker A's order reaches the engine at
 $t + \delta_A$, maker B's at $t + \delta_B$. If $\delta_A < \delta_B$ then A
 is inserted into the FIFO queue first, at every level, on every re-quote,
-and stays in front until it fills or cancels. Latency does not buy a better
+and stays in front until it fills or cancels. Latency doesn't buy a better
 price; it buys a place in line, and the value of that place is the whole
 economics of passive trading.
 
 A synchronous loop, in which every agent acts once per tick in shuffled
-order, cannot express this. Whoever the shuffle happens to pick goes first, so
-"who re-quotes faster" is not a variable of the model. That is why
+order, can't express this. Whoever the shuffle happens to pick goes first, so
+"who re-quotes faster" isn't a variable of the model. That's why
 `Simulation` keeps a `heapq` of arrival events keyed on
 $t + \texttt{latency.sample(rng)}$ and drains it in timestamp order.
 Agents with no latency model submit instantly, which reproduces the old
@@ -99,28 +99,28 @@ $$\operatorname{Var}(\Delta p) = \sigma^2 + 2c^2, \qquad
 and all higher-order autocovariances vanish. Two things fall out.
 
 **The spread is observable from trade prices alone.** The first
-autocovariance does not depend on $\sigma^2$ at all, so
+autocovariance doesn't depend on $\sigma^2$ at all, so
 $\hat{s} = 2\sqrt{-\gamma_1}$ estimates the spread even when you never saw a
 quote. On the demo mix over 100,000 ticks, $\gamma_1 = -0.044735$, giving
 $\hat{s} = 0.4230$. The book's own time-averaged quoted spread over the same
 run is $0.3624$, but the mean spread *at the ticks where a trade printed*
-is $0.4505$. Roll's estimator is not measuring the average quote; it is
+is $0.4505$. Roll's estimator isn't measuring the average quote; it is
 measuring the spread actually paid, and it lands between the two, much
-closer to the one it is supposed to recover. Crossing flow arrives
+closer to the one it's supposed to recover. Crossing flow arrives
 preferentially when the book is wide.
 
 **The autocorrelation is bounded.**
 
 $$\rho_1 = \frac{-c^2}{\sigma^2 + 2c^2} \in [-\tfrac12, 0],$$
 
-reaching $-1/2$ only when the efficient price does not move between trades.
+reaching $-1/2$ only when the efficient price doesn't move between trades.
 Measured: $-0.461$ with only noise traders and a market maker, $-0.370$ once
 the momentum agent is added. The gap is informative. Inverting the formula,
 the second case has $\sigma \approx 0.42\,s$ of genuine price innovation per
-trade against $0.21\,s$ for the first. The chaser is not just adding noise;
+trade against $0.21\,s$ for the first. The chaser isn't just adding noise;
 it is moving the efficient price.
 
-None of this is a property of a simulator. It is why a trade-price series
+None of this is a property of a simulator. It's why a trade-price series
 sampled tick-by-tick is a terrible estimate of volatility, and why
 microstructure work almost always uses mid prices.
 
@@ -286,16 +286,16 @@ toward the ask.
 
 $$p_{\text{micro}} = \frac{P_b V_a + P_a V_b}{V_a + V_b}.$$
 
-It is a useful one-line imbalance proxy and it is *not* Stoikov's
+It's a useful one-line imbalance proxy and it is *not* Stoikov's
 micro-price. Stoikov (2018) constructs a Markov-chain estimator of
 $\lim_{t\to\infty}\mathbb{E}[m_{t}]$ precisely because the weighted mid is a
 biased predictor of the future mid, over-reacting to imbalance when the
 spread is wide. Calling the weighted mid "the microprice" is a common
-mislabelling and it is worth not repeating.
+mislabelling and it's worth not repeating.
 
 ---
 
-## 10. What this simulator is not
+## 10. What this simulator isn't
 
 Stated plainly, because the scorecard makes it measurable:
 
@@ -307,7 +307,7 @@ Stated plainly, because the scorecard makes it measurable:
   boundaries. Real venues quantise to a tick, and queue dynamics at the
   touch depend on it heavily.
 - **Cancels are instantaneous.** Only submissions pay latency, so the
-  cancel-race, pulling a stale quote before it is picked off, is not
+  cancel-race, pulling a stale quote before it's picked off, isn't
   modelled. This flatters fast agents.
 - **One symbol.** No cross-asset flow, no lead-lag.
 
@@ -319,7 +319,7 @@ Stated plainly, because the scorecard makes it measurable:
   efficient market* (1984)
 - Glosten, Milgrom, *Bid, ask and transaction prices in a specialist market
   with heterogeneously informed traders* (1985)
-- Lo, MacKinlay, *Stock market prices do not follow random walks: evidence
+- Lo, MacKinlay, *Stock market prices don't follow random walks: evidence
   from a simple specification test* (1988)
 - Cont, *Empirical properties of asset returns: stylized facts and
   statistical issues* (2001)

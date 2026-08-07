@@ -14,7 +14,7 @@ A live order book you can change, and five experiments measured on it:
 | | | |
 |---|---|---|
 | **00** | Live market | change who is trading and watch the book reshape |
-| **01** | The queue | what latency buys, and what it does not |
+| **01** | The queue | what latency buys, and what it doesn't |
 | **02** | Impact | dial the latent liquidity and watch the cost exponent move |
 | **03** | The tape | fat tails and volatility clustering |
 | **04** | The book | what a trade costs against resting depth, instantly |
@@ -26,12 +26,12 @@ reimplementation.
 
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has
-latency. It is about 2,130 lines of dependency-free Python and 2,870 lines
-of tests (214 of them). Every number printed on this page is regenerated and
-diffed by `tests/test_readme_examples.py`, so the page cannot drift from the
+latency. It's about 2,130 lines of dependency-free Python and 2,870 lines
+of tests (215 of them). Every number printed on this page is regenerated and
+diffed by `tests/test_readme_examples.py`, so the page can't drift from the
 code.
 
-The hard part is not the data structure. Orders arrive in a different order
+The hard part isn't the data structure. Orders arrive in a different order
 than they were sent, a marketable order must never rest and cross the book,
 agents can trade with themselves and inflate the tape, and every number you
 care about (queue position, adverse selection, market-maker P&L) is
@@ -43,7 +43,7 @@ it stops looking like a real market.
 
 Each horizontal band is a resting queue; colour is the size waiting in it.
 The two lines are the best bid and ask, and the triangles are prints:
-buyer-initiated above, seller-initiated below. The price does not glide: it
+buyer-initiated above, seller-initiated below. The price doesn't glide: it
 sits inside a corridor of depth until something eats through a level.
 Between ticks 1000 and 1150 the bid queues stop being replaced and the whole
 structure steps down four points. Regenerate with
@@ -163,7 +163,7 @@ badly super-diffusive. Neither version has the balance right.
 
 **(d) The depth profile is humped**, peaking 1.28 from the mid while the
 mean half-spread is only 0.096; the innermost bin holds about 5% of the
-peak's size. Both agent mixes give the same curve, and that is the tell: the
+peak's size. Both agent mixes give the same curve, and that's the tell: the
 hump's location is set by the quoting kernel and by the value ladder's
 slope, not by adverse selection. The shape is right for a mechanical reason.
 
@@ -194,7 +194,7 @@ with them is wrong too.
 
 Then the simulator itself, against the literature. It gets the bid-ask
 bounce, the humped depth profile, adverse selection, heavy tails, a tail
-index inside Cont's band, volatility clustering, and metaorder cost that is
+index inside Cont's band, volatility clustering, and metaorder cost that's
 **concave** in size at a fitted exponent of 0.57, against published estimates
 of 0.5 to 0.6.
 
@@ -301,7 +301,7 @@ applied=7 unknown=0 clean=True
 Real LOBSTER message files, the ones you would supply yourself from
 lobsterdata.com or any venue that exports the same six columns, reference
 orders that were already resting when the capture window opened, which the
-fixture above deliberately does not. A cold-start replay cannot match those
+fixture above deliberately doesn't. A cold-start replay can't match those
 ids, so it
 counts them instead of dropping them silently: they land in
 `stats.unknown_*`, `stats.clean` tells you whether the reconstruction is
@@ -330,10 +330,10 @@ Two pieces of exchange hygiene are on by default, because leaving them off
 quietly corrupts everything else. `Simulation(stp="cancel_resting")` cancels
 an agent's own resting quote instead of printing a wash trade: rerun the
 demo above with `stp=None` and 44% of the tape is agents trading with
-themselves, and that is exactly the tape `MomentumAgent` and `markout` read.
+themselves, and that's exactly the tape `MomentumAgent` and `markout` read.
 `Order.ttl` expires stale passive quotes, so a long run no longer ends with
 an unboundedly thick book. `Analytics.wash_trade_fraction()` audits the
-first; under the default policy it is 0.
+first; under the default policy it's 0.
 
 All three hot paths (resting a limit order, crossing a marketable one,
 replaying a message) run at a few hundred thousand operations per second on
@@ -347,7 +347,7 @@ and between runs, so rather than quote mine, run
   fill probability, why latency buys time priority, Roll's bounce and the
   implied-spread estimator, variance ratios, why order-flow memory is a
   consequence of order splitting, Glosten–Milgrom and markout, and why
-  linear impact is not the square-root law.
+  linear impact isn't the square-root law.
 - [`docs/validation.md`](docs/validation.md) is the ledger. What the
   estimators recover from processes with known answers, what the simulator
   reproduces of the published stylized facts, and the four things it gets
@@ -359,7 +359,7 @@ and between runs, so rather than quote mine, run
   Jupyter install; run it from the `examples/` directory, since it reads
   `../data/sample_messages.csv`.
 
-## What this is not
+## What this isn't
 
 - **Not a backtester.** There is no historical feed, no portfolio
   accounting, no fill simulation against a recorded tape. `portopt` and
@@ -370,8 +370,8 @@ and between runs, so rather than quote mine, run
 - **Not a trading system.** No venue connectivity, no order gateway, no
   risk controls. Nothing here should touch a live account.
 - **Not optimised.** Pure standard-library Python, no NumPy, no pandas, no
-  extension modules. The constraint is deliberate, and it is what keeps the
-  matching engine and the estimators readable end to end, and it is why the
+  extension modules. The constraint is deliberate, and it's what keeps the
+  matching engine and the estimators readable end to end, and it's why the
   README quotes correctness numbers and not throughput numbers.
 
 ## Known limitations
@@ -383,7 +383,7 @@ and between runs, so rather than quote mine, run
   boundaries. Queue dynamics at the touch depend heavily on the tick in real
   venues.
 - **Only submissions pay latency.** Cancels are instantaneous, so the
-  cancel-race (pulling a stale quote before it is picked off) is not
+  cancel-race (pulling a stale quote before it's picked off) isn't
   modelled, which flatters fast agents.
 - **Replay reconstructs the visible book only.** Hidden-order executions
   (LOBSTER type 5) and auction crosses are skipped by design, and snapshot

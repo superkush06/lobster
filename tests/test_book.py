@@ -172,3 +172,22 @@ def test_add_allow_crossed_optin_for_replays():
     b.add(Order(Side.SELL, qty=10, price=100.0))
     b.add(Order(Side.BUY, qty=10, price=105.0), allow_crossed=True)
     assert b.spread == -5.0  # deliberate: caller opted in
+
+
+def test_a_reused_order_id_is_refused_rather_than_orphaning_the_first():
+    """Two resting orders sharing an id used to leave one unreachable.
+
+    The id is how cancel, reduce and queue position find an order. The second
+    add overwrote the index entry, and the first order stayed on its level
+    with nothing able to reach it, so `len(book)` reported one order where two
+    were resting and the book quietly disagreed with itself.
+    """
+    book = OrderBook()
+    book.add(Order(Side.BUY, qty=100, price=99.5, id=7))
+    with pytest.raises(ValueError, match="already resting"):
+        book.add(Order(Side.BUY, qty=50, price=99.4, id=7))
+    assert len(book) == 1
+    # the id frees up once the order leaves
+    book.cancel(7)
+    book.add(Order(Side.BUY, qty=50, price=99.4, id=7))
+    assert len(book) == 1

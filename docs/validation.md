@@ -23,7 +23,7 @@ analytic: Roll's autocovariance identity, the impact exponent implied by a
 depth profile, a Pareto tail index. Those are exact and the only question is
 whether the estimator finds them. Others are empirical magnitudes from the
 literature, cited by author and year at the bottom. Where a published figure
-is a range or a rule of thumb it is written as one, and where I could not
+is a range or a rule of thumb it's written as one, and where I could not
 vouch for a specific number in a specific paper I used the analytic ground
 truth instead rather than invent a citation. Every source listed is one
 whose result is stated in the text as attributed.
@@ -57,21 +57,21 @@ they are calibrated first, against processes built to have a specific answer.
 
 Three things worth saying out loud about that table.
 
-**Roll's estimator is unreasonably good.** Fed a process that is exactly
+**Roll's estimator is unreasonably good.** Fed a process that's exactly
 Roll's (an efficient price doing a random walk plus a half-spread times an
 independent coin flip), `2*sqrt(-gamma1)` returns the spread it was given to
 within 0.2% on 20,000 observations, across a factor of four in spread and
-a factor of five in volatility. That is the whole content of the 1984 paper
+a factor of five in volatility. That's the whole content of the 1984 paper
 and it survives contact with this implementation.
 
 **The variance-ratio estimator here is biased low, and the bias grows with
 the horizon.** At q=2 the mean over 1,500 random walks is 0.9997; at q=50 it
-is 0.9779, more than two per cent below the null. This is expected and it is
+is 0.9779, more than two per cent below the null. This is expected and it's
 not a defect of the random walks: `variance_ratio` uses plain population
 variances with no small-sample correction, and the q-step differences
 overlap, so roughly q/T of the variance is eaten by the end effects. Lo and
 MacKinlay's own statistic carries a bias correction precisely for this. If
-you are testing a null at long horizons on a short series, do not read a
+you're testing a null at long horizons on a short series, don't read a
 `VR` of 0.98 as evidence of mean reversion. The *spread* of the sampling
 distribution, on the other hand, matches their asymptotic formula to within
 a few per cent at every horizon tested, which is the more delicate claim.
@@ -81,13 +81,13 @@ there.** Cumulative depth growing like distance-squared implies a price
 displacement growing like sqrt(Q), and `cost_to_trade` measures 0.504
 against the analytic 0.500. The residual is discretisation: the walk stops
 at a level index, which is an integer. This matters for Part 2: when the
-simulator's impact comes out at the wrong exponent, it is not because the
+simulator's impact comes out at the wrong exponent, it isn't because the
 exponent is being measured wrongly.
 
 ![impact](impact_law.png)
 
 Panel (a) is that calibration. Panel (b) is the simulator, and the two
-lines do not have the same slope.
+lines don't have the same slope.
 
 ---
 
@@ -123,7 +123,7 @@ almost every disagreement below traces back to that one agent.
 
 Across the two tables: eleven rows agree, two disagree outright, and one
 agrees for one agent mix and not the other. The next section is about the
-ones that are not clean wins, because a validation document that only lists
+ones that aren't clean wins, because a validation document that only lists
 its wins is a brochure.
 
 ---
@@ -152,7 +152,7 @@ tops the ladder up at a bounded rate. The shape is the whole mechanism:
     shares available within D       ~  slope * D^2 / 2
     so to buy Q you must walk       D ~ sqrt(2Q / slope)
 
-which is the square-root law, and it is the same profile Part 1c already
+which is the square-root law, and it's the same profile Part 1c already
 showed the estimator scoring at 0.504. Partial resilience matters as much as
 the shape. The ladder refills at `refill` shares per tick, so a parent that
 consumes faster than that outruns replenishment and walks outward into the
@@ -191,7 +191,7 @@ order, which is exactly what they identify as the source of sign memory.
 
 ---
 
-## Where this still does not match reality, and why
+## Where this still doesn't match reality, and why
 
 ### 1. Order-flow memory is far too short.
 
@@ -214,7 +214,7 @@ draws one.
 
 Cont's first stylized fact is that returns show no significant linear
 autocorrelation. The lag-1 return autocorrelation here is -0.058 in both
-mixes. It is small, and it is at least no longer the +0.098 the chaser used
+mixes. It's small, and it's at least no longer the +0.098 the chaser used
 to produce, but the sign is now systematic rather than absent: the value
 trader pulls price back toward the fundamental, and that mean reversion shows
 up at lag 1. `VR(100)` tells the same story from the other end, 0.45 and 0.43
@@ -226,7 +226,7 @@ that neither version has the balance right.
 
 The absolute-return autocorrelation is positive out to lag 100 with a decay
 exponent of 0.29 (demo) and 0.22 (no chaser), which is the right shape and
-the right order of magnitude. Do not read too much into it. There is no
+the right order of magnitude. Don't read too much into it. There is no
 stochastic-volatility mechanism in this simulator; the likeliest explanation
 is that trading *activity* clusters, so bunched trades mean bunched price
 changes. The empirical fact is generally attributed to something richer than
@@ -237,7 +237,7 @@ that applies to the humped depth profile in `theory.md` section 6.
 
 About 61% of tick-to-tick mid returns in both mixes are exactly 0.0, because
 the mid only moves when the touch does. This inflates kurtosis mechanically:
-a distribution that is mostly a point mass at zero with occasional jumps has
+a distribution that's mostly a point mass at zero with occasional jumps has
 enormous fourth moments regardless of what the jumps look like. The
 excess-kurtosis figures in the first table should be read as "heavy-tailed,
 directionally right, magnitude not comparable with a daily equity series".
@@ -248,19 +248,19 @@ work rarely quotes tick-return kurtosis without saying how it was sampled.
 
 ## What this means for using the package
 
-The verdict has not changed since the scorecard in the README, it has just
+The verdict hasn't changed since the scorecard in the README, it has just
 got more precise. `lobster` is measurably sound as a **mechanism**: price-time
 priority, queue position, spread and adverse-selection accounting, and the
 cost of walking a book are all correct, and the estimators that measure them
-recover known answers to within a per cent. It is measurably *not* a
+recover known answers to within a per cent. It's measurably *not* a
 realistic **price process**: order flow has no memory to speak of, the mid
 trends when it should not, and impact curves the wrong way.
 
-Use it for questions about the queue and about execution mechanics. Do not
+Use it for questions about the queue and about execution mechanics. Don't
 use it to calibrate a cost model you intend to point at a real market.
 `examples/execution_costs.py` shows the shape of that workflow deliberately
 using the simulator's own convex exponent, and says in its own output that
-the exponent is not the one the literature reports.
+the exponent isn't the one the literature reports.
 
 ---
 
@@ -405,7 +405,7 @@ cases each with a fixed seed:
 - a simulation is a deterministic function of its seed
 - autocorrelation is bounded by 1 and invariant to affine rescaling
 - VR(1) is exactly 1, and VR(q) is scale-free
-- VR(q) equals 1 + 2*sum_k (1-k/q) rho_k, the identity it is defined by
+- VR(q) equals 1 + 2*sum_k (1-k/q) rho_k, the identity it's defined by
 - excess kurtosis returns 0 for a Gaussian, -1.2 for a uniform, 3 for a Laplace
 - Hill's estimator recovers the alpha a Pareto sample was drawn with
 - a power-law fit inverts an exact power law
@@ -424,7 +424,7 @@ cases each with a fixed seed:
   specialist market with heterogeneously informed traders.* Journal of
   Financial Economics 14(1), 71-100. The spread as compensation for
   adverse selection.
-- Lo, A. W. and MacKinlay, A. C. (1988). *Stock market prices do not follow
+- Lo, A. W. and MacKinlay, A. C. (1988). *Stock market prices don't follow
   random walks: evidence from a simple specification test.* Review of
   Financial Studies 1(1), 41-66. The variance-ratio statistic and its
   sampling distribution under the random-walk null.

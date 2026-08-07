@@ -148,7 +148,7 @@
   .seg button:hover { border-color: var(--quiet); color: var(--ink) }
   .seg button.on { background: var(--ink); border-color: var(--ink); color: var(--paper) }
   /* Each tile draws its own hairline rather than the grid showing through the
-     gaps, so a row that does not divide evenly leaves paper behind instead of
+     gaps, so a row that doesn't divide evenly leaves paper behind instead of
      a block of grey where the missing cells would be. */
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.2rem, 1fr));
            gap: 1px; margin-top: 1.6rem }
@@ -370,8 +370,8 @@
     there. Give them the same delay and the advantage disappears; overshoot, and it changes
     hands.</p>
 
-  <p>That is the whole mechanism, and all of it is arrival order. The two makers quote the same
-    price, in the same size, off the same model. One run of fifteen hundred ticks would not tell
+  <p>That's the whole mechanism, and all of it is arrival order. The two makers quote the same
+    price, in the same size, off the same model. One run of fifteen hundred ticks wouldn't tell
     you whether the effect were real or whether that seed happened to be kind, so here are
     twelve, each a separate market:</p>
 </div>
@@ -383,7 +383,7 @@
 
 <div class="text">
   <p>So being early wins the queue. The obvious next thought is that it therefore wins money,
-    and that turns out to be wrong. It is the more interesting half of this.</p>
+    and that turns out to be wrong. It's the more interesting half of this.</p>
 
   <p><strong>Markout</strong> is the average move in the mid price over the twenty ticks after
     one of your orders fills, signed by whether you bought or sold. Positive means the market
@@ -459,11 +459,11 @@
     the market maker re-quotes around a mid the parent has already moved, and the parent chases
     its own footprint.</p>
 
-  <p>That shape is the whole mechanism, and it is arithmetic. If the size resting at distance
+  <p>That shape is the whole mechanism, and it's arithmetic. If the size resting at distance
     <span class="n">d</span> from fair value grows like <span class="n">d</span>, then the shares
     available within <span class="n">D</span> grow like <span class="n">D²</span>, so buying
     <span class="n">Q</span> means walking out to
-    <span class="n">D&nbsp;~&nbsp;√Q</span>. Depth that is linear in distance <em>is</em> the
+    <span class="n">D&nbsp;~&nbsp;√Q</span>. Depth that's linear in distance <em>is</em> the
     square-root law. Refill it too fast and the book becomes perfectly elastic, price snaps back
     between children, and impact vanishes instead, which is wrong in the other direction.</p>
 </div>
@@ -481,7 +481,7 @@
     of the thing it imitates. Two of those shapes are cheap to check and hard to fake. Real
     returns have <strong>heavy tails</strong>: the big moves are far more common than a bell
     curve allows. And their <em>size</em> is autocorrelated even though their
-    <em>direction</em> is not, which is <strong>volatility clustering</strong>, the reason quiet
+    <em>direction</em> isn't, which is <strong>volatility clustering</strong>, the reason quiet
     weeks and violent weeks come in runs.</p>
 </div>
 
@@ -495,9 +495,9 @@
 </div>
 
 <div class="text">
-  <p>Past the end of the side there is nothing to extrapolate with, so a sweep that cannot be
+  <p>Past the end of the side there is nothing to extrapolate with, so a sweep that can't be
     filled comes back marked incomplete and reports how much it managed, rather than inventing
-    a price for the remainder. That is the difference between this figure and the one above it.
+    a price for the remainder. That's the difference between this figure and the one above it.
     Here the whole trade goes at once and pays what the book is asking; the second experiment
     works the same quantity in over three hundred ticks and lets liquidity come back between
     children. The gap between those two numbers is the reason execution algorithms exist.</p>
@@ -512,9 +512,9 @@
   <h2>What the book charges, right now</h2>
   <p class="thesis">The only question here that needs no simulation. Walking a resting book is
     arithmetic, so this one answers as fast as you can drag.</p>
-  <p>The first three questions all needed a simulation to run. This one does not. Below is a
+  <p>The first three questions all needed a simulation to run. This one doesn't. Below is a
     single frozen book, and buying against it is arithmetic: walk the ask side in price order,
-    take what is resting at each level, stop when you have enough. That is what
+    take what's resting at each level, stop when you have enough. That's what
     <span class="n">cost_to_trade</span> does, without touching the book, and it answers in
     microseconds. Drag the size:</p>
 </div>
@@ -547,12 +547,12 @@
     stream and reconstructs what was resting, message by message.</p>
   <p>NASDAQ order flow is distributed by <a href="https://lobsterdata.com">LOBSTER</a> as a
     message file: one event per line, six columns, no book. Time, event type, order id, size,
-    price in ten-thousandths, and direction. That is the whole feed. The book is not in the
+    price in ten-thousandths, and direction. That's the whole feed. The book isn't in the
     file; it is what you get by applying the events in order, and getting that reconstruction
     right is the difference between analysing a market and analysing your own bookkeeping.</p>
   <p>Seven event types, and three of them deliberately leave the visible book alone. A hidden
     execution fills against size that was never displayed, a cross prints at an auction, and a
-    halt is not a trade at all. Skipping them is correct rather than lazy, and the counters
+    halt isn't a trade at all. Skipping them is correct rather than lazy, and the counters
     below report how many were skipped so the claim is checkable.</p>
   <p>The feed on the left is generated rather than downloaded, because the real files are
     licensed and gigabytes wide, but the format and the event vocabulary are LOBSTER's and
@@ -578,7 +578,7 @@
   <span class="m">All five, together</span>
   <h2>The scorecard</h2>
   <p class="thesis">Every row below was computed in this tab while you scrolled. Rows still
-    reading <span class="n">not yet run</span> belong to a section you have not reached.</p>
+    reading <span class="n">not yet run</span> belong to a section you haven't reached.</p>
 
   <div class="scroll"><table class="score">
     <thead><tr><th></th><th>What was measured</th><th>Here</th><th>Reference</th></tr></thead>
@@ -590,7 +590,7 @@
   <p>Five questions, one engine, and every number above computed while you read. The same
     engine is scored against published results in
     <a href="https://github.com/superkush06/lobster/blob/main/docs/validation.md">validation.md</a>,
-    where eleven of fourteen rows agree. The three that do not are written up rather than
+    where eleven of fourteen rows agree. The three that don't are written up rather than
     dropped: order-flow memory dies after about a hundred trades where real flow lasts
     thousands, returns carry a small negative autocorrelation where the reference is zero, and
     the mid mean reverts harder than a real one. A simulator that only listed its wins would be
@@ -624,7 +624,7 @@ let runs = 0;
 const tally = () => { const e = $("#runCount"); if (e) e.textContent = runs; };
 
 // Pyodide runs one thing at a time, and three sections now want it. Everything
-// goes through here so a slider drag cannot land in the middle of the impact
+// goes through here so a slider drag can't land in the middle of the impact
 // sweep.
 let pyQueue = Promise.resolve();
 let pyPending = 0;
@@ -910,7 +910,7 @@ function drawTails() {
     const x0 = X(e[i]), x1 = X(e[i + 1]);
     c.fillRect(x0 + .5, Y(v), Math.max(1, x1 - x0 - 1), Y(.5) - Y(v));
   });
-  c.strokeStyle = FAST; c.lineWidth = 2; c.beginPath();   // the normal it is not
+  c.strokeStyle = FAST; c.lineWidth = 2; c.beginPath();   // the normal it isn't
   TAPE.gauss.forEach((g, i) => {
     const x = X((e[i] + e[i + 1]) / 2);
     i ? c.lineTo(x, Y(g)) : c.moveTo(x, Y(g));
@@ -920,7 +920,7 @@ function drawTails() {
   c.fillText("A NORMAL OF THE SAME WIDTH", X(0.35), Y(TAPE.gauss[Math.floor(TAPE.gauss.length * .62)]) - 14);
 }
 
-/* figure 6: direction is not autocorrelated, size is */
+/* figure 6: direction isn't autocorrelated, size is */
 function drawClust() {
   const { c, w, h } = ctx($("#clust"), 244);
   if (!TAPE) return;
@@ -1021,7 +1021,7 @@ async function computeWalk() {
   if (WALK) return;
   WALK = await pyJSON("sim.walk_prepare()");
   // Cap the drag at the depth the figure actually draws, so nothing happens
-  // off-screen. What is below is reported in words instead.
+  // off-screen. What's below is reported in words instead.
   walkQty = Math.round(WALK.total * .3);
   const el = $("#slWalk");
   el.setAttribute("aria-valuemin", "10");
@@ -1051,9 +1051,9 @@ function sayWalk() {
      of <span class="n">${r.avg_price.toFixed(4)}</span>, which is
      <span class="n">${r.slippage.toFixed(4)}</span> a share worse than the mid you started
      from, and leaves the mid <span class="n">${r.impact.toFixed(4)}</span> higher. None of
-     that is a model. It is arithmetic on the depth that happens to be resting, which is why
+     that's a model. It's arithmetic on the depth that happens to be resting, which is why
      it answers instantly while every other figure here has to run a market. The drag stops at
-     <span class="n">${WALK.total.toLocaleString()}</span> lots because that is everything in
+     <span class="n">${WALK.total.toLocaleString()}</span> lots because that's everything in
      the levels drawn above; the full ask side holds
      <span class="n">${WALK.side_total.toLocaleString()}</span> across
      <span class="n">${WALK.n_side}</span> levels, and the sweep keeps walking past the bottom
@@ -1166,7 +1166,7 @@ function livePush(f) {
       if (px > hi) hi = px;
     }
   }
-  if (lo < hi) {                       // ease the window so it does not jitter
+  if (lo < hi) {                       // ease the window so it doesn't jitter
     const pad = (hi - lo) * .06 + .02;
     LIVE.lo += ((lo - pad) - LIVE.lo) * .09;
     LIVE.hi += ((hi + pad) - LIVE.hi) * .09;
@@ -1213,12 +1213,14 @@ function sayLive(f) {
      thins to whatever the noise leaves lying around.`;
 }
 
+let liveSaid = 0;
 async function liveTick() {
   if (!LIVE.on || !LIVE.ready || document.hidden) return;
   const f = await pyJSON("sim.live_step(14)");
   if (!f) return;
   livePush(f); drawLive(); liveTiles(f);
   $("#liveState").textContent = `${f.n_trades.toLocaleString()} trades`;
+  if (++liveSaid % 18 === 0) sayLive(f);
 }
 
 function liveSetPlay() {
@@ -1336,7 +1338,7 @@ async function computeFeed() {
   (function tick(t) {
     if (FEED && feedOn && !document.hidden && t - feedT > 110) {
       if (feedI >= FEED.n - 1) { feedOn = false; feedSetPlay(); }
-      else { feedI += 1; drawFeed(); }
+      else { feedI += 1; drawFeed(); feedSetPlay(); }
       feedT = t;
     }
     requestAnimationFrame(tick);
@@ -1557,13 +1559,13 @@ function writeCopy() {
     ? `On the same wire the queue splits evenly,
        <span class="n">${pct(mean(S.share))}</span> across all
        <span class="n">${N}</span> seeds, spread <span class="n">±${(sd(S.share) * 100).toFixed(1)}</span>
-       points. This is the control, and it is how you check that none of this is scripted.`
+       points. This is the control, and it's how you check that none of this is scripted.`
     : `Every seed lands in the same place: the <span class="${A}">${nA}</span> is first in line
        <span class="n">${pct(mean(shareSweep))}</span> of the time, spread
        <span class="n">±${(sd(shareSweep) * 100).toFixed(1)}</span> points across
        <span class="n">${N}</span> runs, on a wire
        <span class="n">${(Math.max(vFast, vSlow) / Math.min(vFast, vSlow)).toFixed(1)}×</span>
-       shorter. That is not a lucky seed.`;
+       shorter. That isn't a lucky seed.`;
 
   $("#sMark").innerHTML = level
     ? `Both clouds sit on top of each other, which is what the control should look like:
@@ -1575,12 +1577,12 @@ function writeCopy() {
        <span class="n">${mean(diff) >= 0 ? "+" : ""}${mean(diff).toFixed(4)}</span> against a
        spread of <span class="n">${sd(diff).toFixed(4)}</span>
        (<span class="n">t&nbsp;=&nbsp;${t.toFixed(1)}</span>). Whatever speed is buying here, it
-       is not a better fill.`;
+       isn't a better fill.`;
 
   $("#close").innerHTML = level
     ? `Same quotes, same prices, same wire, and nothing left to win. Pull either handle
        back and the queue tilts again, while these two clouds stay exactly where they are.`
-    : `So the title is the whole claim, and it is deliberately narrow. Latency bought the
+    : `So the title is the whole claim, and it's deliberately narrow. Latency bought the
        <span class="${A}">${nA}</span> <span class="n">${fA.toLocaleString()}</span> fills to the
        <span class="${B}">${nB}</span>'s <span class="n">${fB.toLocaleString()}</span>, and it
        bought the front of the queue in <span class="n">${wonQueue} of ${N}</span> runs. It did
@@ -1627,7 +1629,7 @@ async function computeImpact() {
 
 // One whole cost curve at one ladder slope. Every point is a fresh set of
 // parent orders worked into a fresh market, which is why this takes seconds
-// instead of being a lookup, and why the slider is not a switch.
+// instead of being a lookup, and why the slider isn't a switch.
 async function impactAt(slope) {
   const hit = IMP.curves.findIndex((x) => Math.abs(x.slope - slope) < 1e-9);
   if (hit >= 0) { IMP.i = hit; drawImpact(); sayImpact(); return; }
@@ -1692,7 +1694,7 @@ async function computeTape() {
      <span class="n">${t.tail_index}</span>, inside the
      <span class="n">2</span> to <span class="n">5</span> band Cont (2001) reports for real
      returns. Note the spike in the middle:
-     <span class="n">${(t.zero_share * 100).toFixed(0)}%</span> of ticks the mid does not move
+     <span class="n">${(t.zero_share * 100).toFixed(0)}%</span> of ticks the mid doesn't move
      at all, because it only moves when the touch does. That point mass inflates kurtosis on its
      own, which is why the tail index matters more than the kurtosis here, and why real tick
      studies always say how they sampled.`;
@@ -1703,7 +1705,7 @@ async function computeTape() {
      <span class="n">+${t.abs_acf[0].toFixed(3)}</span> and decays with an exponent of
      <span class="n">${t.decay}</span>, under the <span class="n">1</span> that separates long
      memory from short. Big moves follow big moves without telling you their sign, which is
-     volatility clustering, and it is why one volatility number describes no real market well.
+     volatility clustering, and it's why one volatility number describes no real market well.
      The far tail of that orange line is noise at
      <span class="n">${t.n.toLocaleString()}</span> ticks, which is about all a browser can
      afford; the hundred-thousand-tick run in
@@ -1728,8 +1730,8 @@ function toggle(el, on, colour, onChange) {
   paint();
 }
 
-// Kick each experiment off when its figure is near, so the page is not holding
-// the reader still through work they have not scrolled to yet.
+// Kick each experiment off when its figure is near, so the page isn't holding
+// the reader still through work they haven't scrolled to yet.
 function watch(sel, go) {
   const el = $(sel);
   const io = new IntersectionObserver((es) => {
@@ -1738,7 +1740,7 @@ function watch(sel, go) {
   io.observe(el);
 }
 
-// which experiment you are in, and how far through
+// which experiment you're in, and how far through
 (function chrome() {
   const links = [...document.querySelectorAll("nav a")];
   const ids = links.map((a) => a.getAttribute("href").slice(1));
@@ -1769,7 +1771,7 @@ document.fonts.ready.then(redraw);
     // a visitor holding a cached bundle from a previous deploy alongside fresh
     // HTML gets an ImportError for whatever was added since.
     // One tiny always-fresh file names the bundle; the bundle is then fetched
-    // at a URL that changes whenever its bytes do. Revalidation alone is not
+    // at a URL that changes whenever its bytes do. Revalidation alone isn't
     // enough, and a stale zip against fresh HTML is an ImportError from deep
     // inside Pyodide with nothing pointing at the cause.
     const fresh = { cache: "no-store" };
