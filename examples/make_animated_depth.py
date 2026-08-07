@@ -368,6 +368,10 @@ def build(run: Run, theme: str) -> str:
         f'<text transform="translate({PX - 46},{(PY + plot_b) / 2}) rotate(-90)" '
         f'font-size="13" text-anchor="middle" fill="{t["quiet"]}">price</text>'
     )
+    # Two decimals, always. The middle gridline is spr_max/2, which lands on a
+    # half-cent whenever spr_max is an odd number of cents, and one decimal
+    # would print that 0.45 line as "0.5" and put the label 11% off the rule
+    # it's labelling.
     for i in range(3):
         s = spr_max * i / 2
         y = yspr(s)
@@ -375,7 +379,7 @@ def build(run: Run, theme: str) -> str:
             f'<path d="M{PX},{n(y)}h{STEPS}" stroke="{t["frame"]}" '
             f'stroke-opacity=".55"/>'
             f'<text x="{PX - 10}" y="{n(y + 4)}" font-size="12" '
-            f'text-anchor="end" fill="{t["quiet"]}">{s:.1f}</text>'
+            f'text-anchor="end" fill="{t["quiet"]}">{s:.2f}</text>'
         )
     o.append(
         f'<text transform="translate({PX - 46},{(spr_t + spr_b) / 2}) rotate(-90)" '

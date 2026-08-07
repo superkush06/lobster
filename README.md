@@ -26,8 +26,8 @@ reimplementation.
 
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has
-latency. It's about 2,145 lines of dependency-free Python and 2,990 lines
-of tests (228 of them). Every number printed on this page is regenerated and
+latency. It's about 2,145 lines of dependency-free Python and 3,048 lines
+of tests (232 of them). Every number printed on this page is regenerated and
 diffed by `tests/test_readme_examples.py`, so the page can't drift from the
 code.
 
@@ -71,8 +71,11 @@ pip install -e ".[dev,plot]"    # adds matplotlib, needed for the figures
 ```
 
 Runtime dependencies: none. The package imports only the standard library.
-`matplotlib` (the `plot` extra) is needed only by
-`examples/make_figures.py` and the notebook. Run every command below from
+`matplotlib` (the `plot` extra) is needed only by the two figure scripts,
+`examples/make_figures.py` and `examples/make_animated_depth.py`, and by the
+notebook. The animated figure is hand-emitted SVG and draws nothing through
+matplotlib, but it imports the shared simulation config out of
+`make_figures`, so it inherits the dependency. Run every command below from
 the repository root; the examples read relative paths such as
 `data/sample_messages.csv`.
 
