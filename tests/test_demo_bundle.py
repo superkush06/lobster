@@ -49,17 +49,21 @@ def test_bundled_source_is_byte_identical(bundled, path):
 
 
 def test_the_demo_driver_imports_only_what_is_bundled():
-    """sim.py may import from `lobster`, and nothing else outside stdlib."""
-    driver = (ROOT / "docs" / "demo" / "sim.py").read_text()
+    """sim.py may import `lobster` and the standard library, nothing else.
+
+    Pyodide gets exactly two things: the bundle above and whatever CPython
+    ships with. A third-party import here would import fine on a developer's
+    machine and fail only in the browser, which is the worst place to find out.
+    """
     import ast
-    tree = ast.parse(driver)
-    third_party = set()
+    tree = ast.parse((ROOT / "docs" / "demo" / "sim.py").read_text())
+    imported = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            third_party.add(node.module.split(".")[0])
+            imported.add(node.module.split(".")[0])
         elif isinstance(node, ast.Import):
-            third_party.update(a.name.split(".")[0] for a in node.names)
-    allowed = {"lobster", "math", "json", "__future__"}
-    assert third_party <= allowed, (
-        f"sim.py imports {third_party - allowed}, which Pyodide will not have"
+            imported.update(a.name.split(".")[0] for a in node.names)
+    allowed = set(sys.stdlib_module_names) | {"lobster", "__future__"}
+    assert imported <= allowed, (
+        f"sim.py imports {sorted(imported - allowed)}, which Pyodide will not have"
     )

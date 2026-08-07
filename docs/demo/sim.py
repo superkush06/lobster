@@ -35,8 +35,13 @@ from lobster.agents import (
     ValueAgent,
 )
 from lobster.analytics import Analytics
-from lobster.execution import execute_metaorder, fit_power_law
+from lobster.execution import (
+    cost_to_trade,
+    execute_metaorder,
+    fit_power_law,
+)
 from lobster.latency import ConstantLatency, JitteredLatency
+from lobster.matching import match
 from lobster.order import Side
 from lobster.sim import Simulation
 from lobster.stylized import ReturnFacts, log_returns
@@ -371,4 +376,94 @@ def tape_facts(steps: int = 9000, seed: int = 7, bins: int = 41,
                        if facts.tail_index is not None else None),
         "decay": (round(facts.clustering_decay, 3)
                   if facts.clustering_decay is not None else None),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Experiment 4: what the book charges, right now
+# ---------------------------------------------------------------------------
+
+_WALK = None
+
+
+def walk_prepare(seed: int = 3, warmup: int = 400, depth: int = 20):
+    """Freeze one warmed-up book so the page can walk it at any size.
+
+    Everything else here runs a simulation to answer a question. This one does
+    not: `cost_to_trade` reads the resting book without touching it, so the
+    answer comes back in microseconds and the figure can follow a drag. It is
+    also the honest version of "what would this trade cost", because it is
+    arithmetic on the depth that happens to be there rather than a model.
+    """
+    global _WALK
+    agents, _ = _impact_mix(True)
+    sim = Simulation(agents=agents, seed=seed)
+    for _ in sim.run(warmup):
+        pass
+    _WALK = sim.book
+    levels = []
+    for i, lvl in enumerate(sim.book.iter_levels(Side.SELL)):
+        if i >= depth:
+            break
+        levels.append({"px": round(lvl.price, 2), "qty": lvl.total_qty})
+    shown = sum(lv["qty"] for lv in levels)
+    whole = sum(lv.total_qty for lv in sim.book.iter_levels(Side.SELL))
+    return {
+        "levels": levels,
+        "mid": round(sim.book.mid, 4),
+        "best_ask": round(sim.book.best_ask, 2),
+        "total": shown,          # resting in the levels the figure draws
+        "side_total": whole,     # resting on the whole ask side
+        "n_side": sum(1 for _ in sim.book.iter_levels(Side.SELL)),
+    }
+
+
+def walk(qty: int):
+    """Cost of buying `qty` against that frozen book."""
+    sw = cost_to_trade(_WALK, Side.BUY, int(qty))
+    if sw is None:
+        return None
+    return {
+        "requested": sw.requested,
+        "filled": sw.filled,
+        "complete": sw.complete,
+        "avg_price": round(sw.avg_price, 4) if sw.avg_price is not None else None,
+        "slippage": round(sw.slippage, 4) if sw.slippage is not None else None,
+        "impact": round(sw.impact, 4),
+        "arrival_mid": round(sw.arrival_mid, 4),
+        "mid_after": round(sw.mid_after, 4),
+    }
+
+
+def engine_facts(n: int = 20_000):
+    """Throughput of the two hot paths, measured in whatever is running this.
+
+    Quoted next to the native figure so the WebAssembly tax is visible rather
+    than hidden. `benchmarks/throughput.py` is the same measurement.
+    """
+    import time
+
+    from lobster.book import OrderBook
+    from lobster.order import Order, OrderType
+
+    book = OrderBook()
+    t0 = time.perf_counter()
+    for i in range(n):
+        side = Side.BUY if i % 2 else Side.SELL
+        px = 99.0 - (i % 40) * 0.01 if side is Side.BUY else 101.0 + (i % 40) * 0.01
+        book.add(Order(side=side, qty=10, price=round(px, 2)))
+    insert_s = time.perf_counter() - t0
+
+    t0 = time.perf_counter()
+    hits = 0
+    for _ in range(n // 4):
+        tr = match(book, Order(side=Side.BUY, qty=5, type=OrderType.MARKET))
+        hits += len(tr)
+        if book.best_ask is None:
+            break
+    match_s = time.perf_counter() - t0
+    return {
+        "inserts_per_s": int(n / insert_s) if insert_s else 0,
+        "matches_per_s": int((n // 4) / match_s) if match_s else 0,
+        "trades": hits,
     }
