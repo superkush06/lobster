@@ -5,7 +5,7 @@
 ### Added
 - **`docs/validation.md`**: the library checked against answers fixed
   outside it. Part 1 feeds the estimators processes with closed-form
-  answers — Roll's implied spread recovers a spread of 0.10 as 0.09987, the
+  answers. Roll's implied spread recovers a spread of 0.10 as 0.09987, the
   variance-ratio sampling s.d. matches Lo and MacKinlay's asymptotic formula
   to 0.07% at q=2, and the book walk recovers an exponent of 0.5038 from a
   book built to have a square-root impact law. Part 2 scores the simulator
@@ -38,8 +38,8 @@
 
 ### Changed
 - `examples/scorecard.py` now prints the spread block `docs/theory.md`
-  quotes — gamma_1, Roll's implied spread, the time-averaged and
-  at-the-trade quoted spreads, and the variance ratios — so every statistic
+  quotes (gamma_1, Roll's implied spread, the time-averaged and
+  at-the-trade quoted spreads, and the variance ratios), so every statistic
   in the docs comes from a shipped command.
 - README no longer quotes machine-specific throughput figures; run
   `benchmarks/throughput.py` for yours. The panel-by-panel section is plain
@@ -52,18 +52,18 @@
 
 ### Added
 - **`lobster.stylized`**: four canonical microstructure diagnostics measured
-  off a finished run — bid-ask bounce (lag-1 autocorrelation of trade-price
+  off a finished run: bid-ask bounce (lag-1 autocorrelation of trade-price
   changes), long memory of order flow (trade-sign autocorrelation, its
   power-law exponent and the lag at which it dies), variance ratios for
   both trade and mid prices, and the mean depth profile as a function of
   distance from the mid. `StylizedFacts.measure()` returns all four;
   `summary()` reduces them to headline numbers.
 - **`examples/scorecard.py`**: grades the bundled demo config against those
-  four facts, twice — with and without the momentum agent — so each verdict
+  four facts, twice, with and without the momentum agent, so each verdict
   comes with the ablation that explains it. Two of the four fail, which is
   reported rather than tuned away.
 - **`examples/make_figures.py`**: renders every figure in the README from
-  live simulations — the depth-through-time heatmap, the stylized-facts
+  live simulations: the depth-through-time heatmap, the stylized-facts
   scorecard, and the latency race. Replaces `render_hero.py`.
 - **`docs/theory.md`**: derivations behind the code. Queue position and fill
   probability, why latency buys time priority, Roll's bounce and the
@@ -123,7 +123,7 @@
   reconstruct the visible book from real NASDAQ-style order-flow messages.
 - `OrderBook.reduce()` / `PriceLevel.reduce()` for partial executions.
 - Market-maker **cancel/replace** (`cancel_replace=True`): pulls stale quotes
-  each tick so the book no longer accumulates layers — spread mean drops from
+  each tick so the book no longer accumulates layers. Spread mean drops from
   ≈1.43 to ≈0.28 in the bundled demo.
 - **Adverse-selection markout** metric (`Analytics.markout`).
 - Throughput benchmark (`benchmarks/throughput.py`).

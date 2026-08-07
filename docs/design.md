@@ -1,8 +1,8 @@
-# lobster — design notes
+# lobster: design notes
 
-What the simulator does and the invariants it holds. For *why* — the
+What the simulator does and the invariants it holds. For *why*, meaning the
 derivations, the estimators and the honest reading of what the dynamics do
-and do not reproduce — see [`theory.md`](theory.md).
+and do not reproduce, see [`theory.md`](theory.md).
 
 ## Modeling assumptions
 
@@ -11,7 +11,7 @@ and do not reproduce — see [`theory.md`](theory.md).
   decision order is shuffled to avoid systematic priority bias. Orders from
   agents *with a latency model* are then queued and delivered to the
   matching engine at `decision_ts + latency.sample(rng)`, processed in
-  arrival-timestamp order from a heap — so two agents reacting to the same
+  arrival-timestamp order from a heap, so two agents reacting to the same
   tick race to the book, and time priority goes to the faster one. Agents
   without a latency model submit instantly (the synchronous degenerate
   case; `ConstantLatency(0)` is bit-identical to it). See
@@ -32,7 +32,7 @@ and do not reproduce — see [`theory.md`](theory.md).
   removes the entire resting order.
 - **No iceberg/hidden orders**. All resting size is visible.
 - **Crossed books are rejected**: `OrderBook.add()` raises on an order that
-  crosses the opposite side — route marketable orders through `match()`.
+  crosses the opposite side. Route marketable orders through `match()`.
   Replay opts out (`allow_crossed=True`) because an externally observed
   feed with incomplete pre-window context can transiently look crossed.
 - **Impact models are standalone estimators** (pre-trade analysis); the
@@ -121,7 +121,7 @@ magnitudes. `examples/validate.py` produces every number in it.
 Two results from there bear on the design directly. The estimators in
 `stylized.py` and `execution.py` recover known answers to within a per cent,
 except `variance_ratio`, which is biased low by roughly q/T because it uses
-population variances with no small-sample correction — read `VR` at long
+population variances with no small-sample correction, so read `VR` at long
 horizons on short series with that in mind. And emergent impact in this
 simulator is concave in size at a fitted exponent of 0.57, against published
 metaorder estimates of 0.5 to 0.6. That depends on `ValueAgent` being in the
@@ -149,9 +149,9 @@ being consumed, and without it the exponent is 1.2 to 1.5.
 - Cancels are instantaneous (only order *submissions* pay latency); a
   fully latency-faithful cancel path would also delay cancel-replace.
 - No multi-symbol support; one book per `Simulation`.
-- Greedy partial fills — no pro-rata allocation. Real exchanges may use
+- Greedy partial fills, with no pro-rata allocation. Real exchanges may use
   pro-rata for some products; future work.
-- `microprice` is the size-weighted mid, a proxy — not Stoikov's
+- `microprice` is the size-weighted mid, a proxy, not Stoikov's
   Markov-chain micro-price estimator.
 - No tick size: prices are floats rounded to two decimals at agent
   boundaries, so queue dynamics at the touch are less granular than a real
@@ -163,15 +163,15 @@ being consumed, and without it the exponent is 1.2 to 1.5.
 
 Fuller discussion and derivations in [`theory.md`](theory.md).
 
-- Roll — *A simple implicit measure of the effective bid-ask spread* (1984)
-- Bouchaud, Mezard, Potters — *Statistical properties of stock order books*
-  (2002) — the humped depth profile
-- Lillo, Mike, Farmer — *Theory for long memory in supply and demand* (2005)
-- Cont, Stoikov, Talreja — *A stochastic model for order book dynamics* (2010)
-- Almgren, Chriss — *Optimal execution of portfolio transactions* (2001) —
+- Roll, *A simple implicit measure of the effective bid-ask spread* (1984)
+- Bouchaud, Mezard, Potters, *Statistical properties of stock order books*
+  (2002), the humped depth profile
+- Lillo, Mike, Farmer, *Theory for long memory in supply and demand* (2005)
+- Cont, Stoikov, Talreja, *A stochastic model for order book dynamics* (2010)
+- Almgren, Chriss, *Optimal execution of portfolio transactions* (2001),
   linear-impact optimal execution (contrast with the square-root law)
-- Gatheral — *No-dynamic-arbitrage and market impact* (2010) — the
+- Gatheral, *No-dynamic-arbitrage and market impact* (2010), the
   square-root impact law
-- Stoikov — *The micro-price: a high-frequency estimator of future prices*
+- Stoikov, *The micro-price: a high-frequency estimator of future prices*
   (2018)
-- Gould et al. — *Limit order books* (2013) — a comprehensive survey
+- Gould et al., *Limit order books* (2013), a comprehensive survey

@@ -1,8 +1,8 @@
-# lobster — validation against things outside itself
+# lobster: validation against things outside itself
 
 A simulator that only agrees with its own tests is a very elaborate way of
 being wrong. This document is the other kind of check: every number below
-came out of a process whose answer was fixed before the library saw it —
+came out of a process whose answer was fixed before the library saw it:
 either a closed-form result, or a magnitude somebody else published.
 
 Reproduce all of it with:
@@ -14,7 +14,7 @@ python examples/validate.py --quick    # ~4 s, coarser Monte Carlo
 
 The raw output of the run this page was written from is pasted at the
 bottom. Nothing here has been rounded in a flattering direction, and where
-the library loses it says so — seven of the fourteen rows in Part 2 fail,
+the library loses it says so. Seven of the fourteen rows in Part 2 fail,
 either outright or for one of the two agent mixes, and the failures are the
 more useful half of the page.
 
@@ -30,7 +30,7 @@ whose result is stated in the text as attributed.
 
 ---
 
-## Part 1 — do the estimators find answers that are known in advance?
+## Part 1: do the estimators find answers that are known in advance?
 
 Nothing in Part 2 means anything if the measuring instruments are wrong, so
 they are calibrated first, against processes built to have a specific answer.
@@ -48,7 +48,7 @@ they are calibrated first, against processes built to have a specific answer.
 | sampling s.d. of VR(5) | 0.0504 | 0.0490 | sqrt(2(2q-1)(q-1)/3qT) |
 | sampling s.d. of VR(10) | 0.0758 | 0.0755 | sqrt(2(2q-1)(q-1)/3qT) |
 | sampling s.d. of VR(50) | 0.1703 | 0.1798 | sqrt(2(2q-1)(q-1)/3qT) |
-| mean VR(50) — the finite-sample bias | 0.9779 | 1.0000 | Lo & MacKinlay (1988) |
+| mean VR(50), the finite-sample bias | 0.9779 | 1.0000 | Lo & MacKinlay (1988) |
 | book-walk exponent, depth flat in distance | 1.0000 | 1.0000 | analytic |
 | book-walk exponent, depth linear in distance | 0.5038 | 0.5000 | analytic |
 | book-walk exponent, depth quadratic in distance | 0.3448 | 0.3333 | analytic |
@@ -58,8 +58,8 @@ they are calibrated first, against processes built to have a specific answer.
 Three things worth saying out loud about that table.
 
 **Roll's estimator is unreasonably good.** Fed a process that is exactly
-Roll's — an efficient price doing a random walk plus a half-spread times an
-independent coin flip — `2*sqrt(-gamma1)` returns the spread it was given to
+Roll's (an efficient price doing a random walk plus a half-spread times an
+independent coin flip), `2*sqrt(-gamma1)` returns the spread it was given to
 within 0.2% on 20,000 observations, across a factor of four in spread and
 a factor of five in volatility. That is the whole content of the 1984 paper
 and it survives contact with this implementation.
@@ -80,7 +80,7 @@ a few per cent at every horizon tested, which is the more delicate claim.
 there.** Cumulative depth growing like distance-squared implies a price
 displacement growing like sqrt(Q), and `cost_to_trade` measures 0.504
 against the analytic 0.500. The residual is discretisation: the walk stops
-at a level index, which is an integer. This matters for Part 2 — when the
+at a level index, which is an integer. This matters for Part 2: when the
 simulator's impact comes out at the wrong exponent, it is not because the
 exponent is being measured wrongly.
 
@@ -91,7 +91,7 @@ lines do not have the same slope.
 
 ---
 
-## Part 2 — does the simulator behave like a market?
+## Part 2: does the simulator behave like a market?
 
 Two agent mixes are scored: the bundled demo (two noise traders, a momentum
 chaser, one market maker) and the same thing with the chaser removed, since
@@ -257,7 +257,7 @@ realistic **price process**: order flow has no memory to speak of, the mid
 trends when it should not, and impact curves the wrong way.
 
 Use it for questions about the queue and about execution mechanics. Do not
-use it to calibrate a cost model you intend to point at a real market —
+use it to calibrate a cost model you intend to point at a real market.
 `examples/execution_costs.py` shows the shape of that workflow deliberately
 using the simulator's own convex exponent, and says in its own output that
 the exponent is not the one the literature reports.
@@ -267,7 +267,7 @@ the exponent is not the one the literature reports.
 ## The run this document was written from
 
 ```
-lobster — validation against external ground truth
+lobster: validation against external ground truth
 ==================================================================
 Part 1: estimators against closed-form answers
 
@@ -378,9 +378,9 @@ Part 2: the simulator against published stylized facts
 
 The exponents in section 2c are fitted on parent orders held to a fixed
 child size and a fixed cadence, so the execution horizon grows with the
-parent. `examples/execution_costs.py` fits the same law the other way round
-— fixed horizon, varying rate, expressed as a participation rate — and gets
-1.75. Both are convex; neither is 0.5.
+parent. `examples/execution_costs.py` fits the same law the other way round,
+at a fixed horizon with a varying rate expressed as a participation rate, and
+gets 1.75. Both are convex; neither is 0.5.
 
 ---
 
@@ -418,38 +418,38 @@ cases each with a fixed seed:
 ## References
 
 - Roll, R. (1984). *A simple implicit measure of the effective bid-ask
-  spread in an efficient market.* Journal of Finance 39(4), 1127-1139. —
-  the serial-covariance identity and the implied-spread estimator.
+  spread in an efficient market.* Journal of Finance 39(4), 1127-1139. The
+  serial-covariance identity and the implied-spread estimator.
 - Glosten, L. and Milgrom, P. (1985). *Bid, ask and transaction prices in a
   specialist market with heterogeneously informed traders.* Journal of
-  Financial Economics 14(1), 71-100. — the spread as compensation for
+  Financial Economics 14(1), 71-100. The spread as compensation for
   adverse selection.
 - Lo, A. W. and MacKinlay, A. C. (1988). *Stock market prices do not follow
   random walks: evidence from a simple specification test.* Review of
-  Financial Studies 1(1), 41-66. — the variance-ratio statistic and its
+  Financial Studies 1(1), 41-66. The variance-ratio statistic and its
   sampling distribution under the random-walk null.
 - Cont, R. (2001). *Empirical properties of asset returns: stylized facts
-  and statistical issues.* Quantitative Finance 1(2), 223-236. — heavy
+  and statistical issues.* Quantitative Finance 1(2), 223-236. Heavy
   tails with a tail index between 2 and 5, absence of linear
   autocorrelation, aggregational Gaussianity, and volatility clustering.
 - Bouchaud, J.-P., Mezard, M. and Potters, M. (2002). *Statistical
   properties of stock order books: empirical results and models.*
-  Quantitative Finance 2(4), 251-256. — the mean book shape peaking away
+  Quantitative Finance 2(4), 251-256. The mean book shape peaking away
   from the touch.
 - Bouchaud, J.-P., Gefen, Y., Potters, M. and Wyart, M. (2004).
   *Fluctuations and response in financial markets: the subtle nature of
-  "random" price changes.* Quantitative Finance 4(2), 176-190. — order-sign
+  "random" price changes.* Quantitative Finance 4(2), 176-190. Order-sign
   autocorrelation decaying as a power law with exponent near 0.5.
 - Almgren, R., Thum, C., Hauptmann, E. and Li, H. (2005). *Direct
-  estimation of equity market impact.* Risk 18(7), 57-62. — temporary
+  estimation of equity market impact.* Risk 18(7), 57-62. Temporary
   impact with an exponent near 3/5, estimated from institutional orders.
 - Lillo, F., Mike, S. and Farmer, J. D. (2005). *Theory for long memory in
-  supply and demand.* Physical Review E 71, 066122. — order splitting as
+  supply and demand.* Physical Review E 71, 066122. Order splitting as
   the mechanism, with gamma = alpha - 1.
 - Gatheral, J. (2010). *No-dynamic-arbitrage and market impact.*
-  Quantitative Finance 10(7), 749-759. — the constraint linking the impact
+  Quantitative Finance 10(7), 749-759. The constraint linking the impact
   exponent to the decay kernel, with the square-root law as the
   empirically relevant case.
 - Hill, B. M. (1975). *A simple general approach to inference about the tail
-  of a distribution.* Annals of Statistics 3(5), 1163-1174. — the tail-index
+  of a distribution.* Annals of Statistics 3(5), 1163-1174. The tail-index
   estimator used above.
