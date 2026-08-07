@@ -12,7 +12,7 @@ there is no server and no reimplementation.
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has
 latency. It is about 2,130 lines of dependency-free Python and 2,870 lines
-of tests (213 of them). Every number printed on this page is regenerated and
+of tests (214 of them). Every number printed on this page is regenerated and
 diffed by `tests/test_readme_examples.py`, so the page cannot drift from the
 code.
 
