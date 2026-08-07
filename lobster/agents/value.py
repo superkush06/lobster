@@ -1,4 +1,4 @@
-"""ValueAgent — supplies liquidity against deviations from a fundamental value.
+"""ValueAgent: supplies liquidity against deviations from a fundamental value.
 
 This is the agent `docs/validation.md` kept asking for. Every other agent here
 quotes off the *mid*: the market maker centres on it, the noise traders sample

@@ -3,8 +3,8 @@
 `lobster.stylized` and `lobster.execution` exist to put numbers on a
 simulation, so the first question about them is whether they return the right
 number when the right number is known. Each test feeds a process with a
-closed-form answer — Roll's model, a Pareto tail, an exact power law, a
-Laplace distribution — and checks the estimator recovers it, or asserts an
+closed-form answer (Roll's model, a Pareto tail, an exact power law, a
+Laplace distribution) and checks the estimator recovers it, or asserts an
 algebraic identity that has to hold for any input at all.
 
 Seeds are fixed. Tolerances are sized to the Monte Carlo error of the sample
@@ -226,7 +226,7 @@ def test_impact_models_scale_as_their_names_promise():
     """Linear impact is homogeneous of degree 1; square-root, of degree 1/2.
 
     Both are also strictly increasing in size, and the square-root model is
-    strictly concave — that concavity is the entire empirical content of the
+    strictly concave, and that concavity is the entire empirical content of the
     square-root law, so it is asserted rather than assumed.
     """
     rng = random.Random(2010)

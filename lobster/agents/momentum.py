@@ -1,4 +1,4 @@
-"""MomentumAgent — chases recent tape imbalance."""
+"""MomentumAgent: chases recent tape imbalance."""
 
 from __future__ import annotations
 

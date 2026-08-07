@@ -1,4 +1,4 @@
-"""Matching engine — price-time priority crossing."""
+"""Matching engine: price-time priority crossing."""
 
 from __future__ import annotations
 
@@ -20,23 +20,23 @@ def match(book: OrderBook, taker: Order,
           stp: str | None = None) -> list[Trade]:
     """Match `taker` against `book`; return trades and mutate the book.
 
-    Trades carry **agent_id**s, not order ids — consumers (e.g. the
+    Trades carry **agent_id**s, not order ids, so consumers (e.g. the
     Simulation P&L bookkeeper) need to know *who* traded, not *which order*.
     Use `Order.id` directly if you need order-level traceability.
 
     `taker` is mutated in place: `taker.qty` is decremented per fill, so
     after the call it holds the **leaves quantity**. A limit remainder is
     rested on the book; a market-order remainder is *not* (there is nothing
-    left to match against) — check `taker.qty > 0` to detect that the book
+    left to match against). Check `taker.qty > 0` to detect that the book
     was exhausted before the order filled.
 
     `stp` (self-trade prevention) controls what happens when the taker would
     cross its own resting order (same `agent_id`), the way real venues do:
 
-    - ``None``            — no prevention; the agent trades with itself.
-    - ``"cancel_resting"``— the resting order is cancelled and matching
+    - ``None``            : no prevention; the agent trades with itself.
+    - ``"cancel_resting"``: the resting order is cancelled and matching
       continues (Nasdaq-style "cancel oldest").
-    - ``"cancel_taker"``  — matching stops and the taker's remainder is
+    - ``"cancel_taker"``  : matching stops and the taker's remainder is
       discarded (not rested); the resting order survives.
     """
     if stp is not None and stp not in STP_POLICIES:

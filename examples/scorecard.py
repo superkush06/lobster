@@ -1,7 +1,7 @@
 """Grade the simulator against four textbook microstructure facts.
 
-The bundled demo mix is run twice — once with the momentum agent, once
-without — and each run is scored on the diagnostics in `lobster.stylized`.
+The bundled demo mix is run twice, once with the momentum agent and once
+without, and each run is scored on the diagnostics in `lobster.stylized`.
 The point is not to pass: two of the four fail, and the second column
 explains why by removing the agent responsible.
 
@@ -97,7 +97,7 @@ def measure(steps: int, seed: int, *, momentum: bool) -> Run:
 
 
 def grade(sf: StylizedFacts) -> list[tuple[str, str, str]]:
-    """(fact, verdict, evidence) — thresholds are stated, not tuned."""
+    """(fact, verdict, evidence). Thresholds are stated, not tuned."""
     rows = []
 
     ok = -0.5 <= sf.bounce < -0.15

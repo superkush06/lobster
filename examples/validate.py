@@ -2,14 +2,14 @@
 
 Two kinds of check, kept apart on purpose.
 
-**Part 1 — estimators against ground truth.** Feed a process whose answer is
+**Part 1: estimators against ground truth.** Feed a process whose answer is
 known in closed form to the estimator and see whether it comes back. Roll's
 implied spread against a synthetic Roll process with a spread we chose; the
 variance-ratio sampling distribution against Lo and MacKinlay's asymptotic
 formula; the book-walk cost against depth profiles whose impact exponent can
 be done on paper. If these fail, nothing downstream means anything.
 
-**Part 2 — the simulator against published stylized facts.** Fat tails,
+**Part 2: the simulator against published stylized facts.** Fat tails,
 volatility clustering, uncorrelated returns, long-memory order flow, the
 humped book and the square-root impact law. Some of these the simulator
 reproduces and some it does not; the output says which, and `docs/validation.md`
@@ -61,7 +61,7 @@ def row(label: str, ours: str, reference: str, verdict: str) -> None:
 
 
 # ===========================================================================
-# Part 1 — estimators against closed-form / brute-force ground truth
+# Part 1: estimators against closed-form / brute-force ground truth
 # ===========================================================================
 
 def roll_process(n: int, spread: float, sigma: float,
@@ -173,11 +173,11 @@ def check_sqrt_impact() -> None:
 
 
 # ===========================================================================
-# Part 2 — the simulator against published stylized facts
+# Part 2: the simulator against published stylized facts
 # ===========================================================================
 
 def run_demo(steps: int, seed: int, *, momentum: bool):
-    """Run the demo mix once and memoise it — two sections read the same run."""
+    """Run the demo mix once and memoise it: two sections read the same run."""
     key = (steps, seed, momentum)
     if key in _DEMO_CACHE:
         return _DEMO_CACHE[key]

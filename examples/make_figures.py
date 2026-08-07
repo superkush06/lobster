@@ -137,7 +137,7 @@ def fig_depth(steps: int = 1400, seed: int = 7) -> None:
                facecolor=ASK, edgecolor="white", linewidths=0.35,
                label="seller-initiated print", zorder=4)
     ax.set_ylabel("price")
-    ax.set_title("Every resting order, every level, every tick — "
+    ax.set_title("Every resting order, every level, every tick, "
                  "colour is queue depth on a log scale")
     ax.legend(loc="lower left", ncol=2, fontsize=8, handletextpad=0.5,
               columnspacing=1.4, frameon=True, framealpha=0.92,
@@ -259,7 +259,7 @@ def fig_stylized(steps: int = 100_000, seed: int = 7) -> None:
     d.grid(lw=0.5)
     d.legend(fontsize=8)
 
-    fig.suptitle(f"Stylized-facts scorecard — {steps:,} ticks, "
+    fig.suptitle(f"Stylized-facts scorecard: {steps:,} ticks, "
                  f"{with_mom.n_trades:,} trades, seed {seed}",
                  fontsize=11, y=0.975)
     out = DOCS / "stylized_facts.png"
@@ -353,7 +353,7 @@ def fig_race(steps: int = 4000, seed: int = 11) -> None:
     c.set_ylabel("mid drift after a passive fill")
     c.grid(axis="y", lw=0.5)
 
-    fig.suptitle("Identical quotes, different wires — "
+    fig.suptitle("Identical quotes, different wires: "
                  f"{steps} ticks, seed {seed}, {len(sim.tape)} trades",
                  fontsize=11, y=1.03)
     out = DOCS / "latency_race.png"

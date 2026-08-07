@@ -1,7 +1,7 @@
-"""Market impact models — estimates of permanent + temporary price change.
+"""Market impact models: estimates of permanent + temporary price change.
 
 These are standalone estimators for pre-trade analysis (e.g. sizing a
-parent order); the matching engine itself never applies them — price
+parent order); the matching engine itself never applies them, because price
 impact in the simulator is *emergent* from orders eating through the
 book's depth.
 """
@@ -37,7 +37,7 @@ class LinearImpact(ImpactModel):
 class SquareRootImpact(ImpactModel):
     """Empirical square-root law: `eta * sqrt(Q / V)`.
 
-    Doubling trade size only increases impact by √2, not 2 — a remarkably
+    Doubling trade size only increases impact by √2, not 2, a remarkably
     stable empirical regularity across asset classes (see e.g. Gatheral
     2010, "No-dynamic-arbitrage and market impact"). Note this is *not*
     Almgren–Chriss: their 2001 optimal-execution model uses impact that is

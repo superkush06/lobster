@@ -131,13 +131,13 @@ def test_market_maker_without_cancel_accumulates():
         ctx = AgentContext(book=book, tape=Tape(), rng=rng, ts=ts)
         for o in mm.step(ctx):
             book.add(o)
-    # Far more than 2 resting orders — the accumulation the README warns about.
+    # Far more than 2 resting orders, the accumulation the README warns about.
     assert len(book) > 10
 
 
 def test_market_maker_anchors_to_last_mid_not_hardcoded_100():
     """If the book empties after the price drifted, the maker must quote
-    around the last mid it saw — not snap back to 100 and flash-crash."""
+    around the last mid it saw, not snap back to 100 and flash-crash."""
     book = OrderBook()
     book.add(Order(Side.BUY, qty=10, price=149.5, agent_id=0, ts=0))
     book.add(Order(Side.SELL, qty=10, price=150.5, agent_id=0, ts=0))
@@ -174,7 +174,7 @@ def test_ref_price_seeds_first_quote():
 
 
 def test_momentum_agent_respects_max_position(seed_rng):
-    """A capped momentum agent must not chase beyond its position limit —
+    """A capped momentum agent must not chase beyond its position limit,
     uncapped chasing on a wash-free tape feeds back into its own signal."""
     book = OrderBook()
     book.add(Order(side=Side.SELL, qty=10, price=100.5, agent_id=0, ts=0))

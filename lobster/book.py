@@ -121,7 +121,7 @@ class OrderBook:
         weighted by the *opposite* side's top-of-book size.
 
         This is the common imbalance-weighted proxy for where the next
-        trade is headed — note it is *not* Stoikov's (2018) micro-price,
+        trade is headed. Note it is *not* Stoikov's (2018) micro-price,
         which is a Markov-chain estimator constructed precisely because
         the weighted mid is a biased predictor.
         """
@@ -139,8 +139,8 @@ class OrderBook:
         """Rest `order` on the book without matching.
 
         Adding a bid at/above the best ask (or an ask at/below the best bid)
-        would silently produce a crossed book — negative spread, nonsense mid
-        and microprice — so it raises `ValueError`. Route marketable orders
+        would silently produce a crossed book (negative spread, nonsense mid
+        and microprice), so it raises `ValueError`. Route marketable orders
         through `match()` instead; pass `allow_crossed=True` only when
         deliberately reconstructing an externally-observed state (e.g. a
         message replay with incomplete pre-window context).

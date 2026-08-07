@@ -1,4 +1,4 @@
-"""Trade tape — records executed trades."""
+"""Trade tape: records executed trades."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ class Trade:
 class Tape:
     """Buffer of executed trades, unbounded by default.
 
-    Pass `maxlen` to bound memory in very long runs — but note that
+    Pass `maxlen` to bound memory in very long runs, but note that
     analytics (markout, imbalance) iterate the tape, so a bounded tape
     silently windows them to the last `maxlen` trades. `evicted` /
     `truncated` report whether that has happened.

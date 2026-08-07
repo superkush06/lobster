@@ -1,4 +1,4 @@
-"""LOBSTER-format message replay — reconstruct book state from a message stream.
+"""LOBSTER-format message replay: reconstruct book state from a message stream.
 
 The LOBSTER dataset (https://lobsterdata.com) distributes NASDAQ order flow as
 CSV "message" files, one event per row:

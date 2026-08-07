@@ -1,4 +1,4 @@
-"""Stylized facts — does the simulated tape look anything like a real one?
+"""Stylized facts: does the simulated tape look anything like a real one?
 
 A simulator is only worth reasoning with if its output has the statistical
 shape of the thing it imitates. Microstructure has a short list of facts
@@ -24,7 +24,7 @@ Plus a fourth diagnostic that is really a sanity check on the *mid*: over
 horizons longer than the bounce, an efficient price is close to a
 martingale, so its variance ratio should sit near 1.
 
-`ReturnFacts` covers the other end of the same question — the unconditional
+`ReturnFacts` covers the other end of the same question: the unconditional
 distribution rather than the book. Cont (2001) lists the properties any
 return series is expected to have: heavy tails with a finite tail index,
 almost no linear autocorrelation, a distribution that becomes more Gaussian
@@ -338,7 +338,7 @@ class ReturnFacts:
     The three things Cont (2001) singles out for asset returns: the
     distribution is heavy-tailed (positive excess kurtosis, finite tail
     index), returns themselves are close to uncorrelated, and *absolute*
-    returns are positively autocorrelated over long horizons — volatility
+    returns are positively autocorrelated over long horizons, which is volatility
     clustering.
     """
 

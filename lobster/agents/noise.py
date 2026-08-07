@@ -1,4 +1,4 @@
-"""NoiseAgent — random limit + market orders around mid.
+"""NoiseAgent: random limit + market orders around mid.
 
 Includes a `market_order_rate` knob so callers can inject crossing flow
 (marketable orders) into an otherwise passive book, which is necessary

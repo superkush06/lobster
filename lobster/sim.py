@@ -2,7 +2,7 @@
 
 P&L attribution: trades carry agent ids (see matching.match), and after each
 submitted order is matched we call `Agent.on_fill` for the buyer/seller agent
-that appears in the resulting Trade. Order ids are *not* used here — they
+that appears in the resulting Trade. Order ids are *not* used here, and they
 are an internal book-keeping concern of the matching engine and OrderBook.
 
 Exchange-style hygiene, on by default:
@@ -20,7 +20,7 @@ Latency (event-driven arrivals): when an agent has a `latency` model, each
 order it emits is queued and only reaches the matching engine
 `latency.sample(rng)` time units after the decision. Arrivals are processed
 in timestamp order from a heap, so two agents reacting to the same tick race
-to the book and the faster one wins time priority — which is what makes
+to the book and the faster one wins time priority, which is what makes
 queue-position and latency questions studiable. Agents without a latency
 model (the default) submit instantly, reproducing the synchronous loop
 exactly. Trades from delayed arrivals are stamped with their arrival time.

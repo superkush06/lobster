@@ -127,7 +127,7 @@ def test_markout_counts_fills_between_metric_samples():
                            mid=100.0 + k, spread=None, n_trades=0)
                for k in range(20)]
     tape = Tape()
-    # Passive buy fill at ts=2.5 — between metric rows 2 and 3.
+    # Passive buy fill at ts=2.5, between metric rows 2 and 3.
     tape.record(Trade(price=100.0, qty=10, buyer_id=1, seller_id=2,
                       ts=2.5, aggressor=Side.SELL))
     an = Analytics(metrics=metrics, tape=tape, agents=[])

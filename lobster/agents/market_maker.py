@@ -1,4 +1,4 @@
-"""MarketMakerAgent — quotes both sides, skews on inventory."""
+"""MarketMakerAgent: quotes both sides, skews on inventory."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ class MarketMakerAgent(Agent):
     def step(self, ctx: AgentContext) -> list[Order]:
         # Cancel/replace: pull our previous quotes before re-quoting so the
         # book doesn't accumulate stale layers. Cancelling an already-filled
-        # (or partially-filled) order is a safe no-op — the book ignores ids
+        # (or partially-filled) order is a safe no-op, since the book ignores ids
         # it no longer holds.
         if self.cancel_replace:
             for oid in self._resting_ids:

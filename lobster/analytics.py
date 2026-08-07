@@ -1,4 +1,4 @@
-"""Post-simulation analytics — spread/depth time series, P&L, queue position."""
+"""Post-simulation analytics: spread/depth time series, P&L, queue position."""
 
 from __future__ import annotations
 
@@ -107,11 +107,11 @@ class Analytics:
         For each fill, markout = (+1 if the agent bought, -1 if sold) times the
         change in mid from the fill step to `horizon` steps later. A **negative**
         average means the price systematically moves against the agent right
-        after it trades — i.e. **adverse selection**, the core risk a market
+        after it trades, i.e. **adverse selection**, the core risk a market
         maker is paid the spread to bear.
 
         With `passive_only` (default), only fills where the agent provided
-        liquidity (its resting order was hit) are counted — the relevant set
+        liquidity (its resting order was hit) are counted, since that is the relevant set
         for a market maker. Set False to include liquidity-taking fills too.
 
         Fills are anchored to the **latest metrics row at or before** the

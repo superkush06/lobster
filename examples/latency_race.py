@@ -4,7 +4,7 @@ Both makers quote the same prices off the same mid (inv_skew=0), so the only
 difference is the wire: the fast maker's quotes arrive 3x sooner. Price-time
 priority then puts the fast maker at the front of the queue at every shared
 level, which shows up as (a) front-of-queue share, (b) passive fill volume,
-and (c) markout — the canonical result that latency buys queue position.
+and (c) markout, the canonical result that latency buys queue position.
 
 Run:  python examples/latency_race.py --steps 4000 --seed 11
 """

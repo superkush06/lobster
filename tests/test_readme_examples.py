@@ -1,6 +1,6 @@
 """Re-derive every number README.md prints, and fail if any of them moved.
 
-The README quotes example output verbatim — agent P&L, the stylized-facts
+The README quotes example output verbatim: agent P&L, the stylized-facts
 scorecard, the latency race, the cost-curve table, the replay snapshot, the
 validation table. Prose like that rots silently: a one-line change to the
 quoting kernel shifts the scorecard and nobody notices, and then the front
@@ -124,7 +124,7 @@ def test_validation_table_matches_validate_py():
 # --------------------------------------------------------------------------
 
 def test_thirty_seconds_block_prints_its_comments():
-    """`print(x)   # 100.5` — the comment is the assertion."""
+    """`print(x)   # 100.5`, where the comment is the assertion."""
     src = block_starting("from lobster import OrderBook, Order, Side, OrderType, match")
     expected = re.findall(r"^print\(.*?\)\s*#\s*(\S+)\s*$", src, re.M)
     assert len(expected) == 2, "the Thirty seconds block changed shape"
@@ -148,7 +148,7 @@ def _readme_flat() -> str:
 
 
 def test_readme_test_count_is_the_real_test_count():
-    """'2,500 lines of tests (173 of them)' — the 173 is checked here."""
+    """'2,500 lines of tests (173 of them)', where the 173 is checked here."""
     proc = subprocess.run([sys.executable, "-m", "pytest", "--collect-only",
                            "-p", "no:cacheprovider"],
                           cwd=ROOT, capture_output=True, text=True, check=True)

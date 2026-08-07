@@ -7,7 +7,7 @@ is reproducible from the test name alone; `random.Random` rather than an
 external generator keeps the package's zero-dependency promise intact.
 
 Where an invariant is a conservation law it is checked exactly, not to a
-tolerance — share counts are integers and cash is a sum of the same products
+tolerance: share counts are integers and cash is a sum of the same products
 on both sides of every trade, so anything but equality is a bug.
 """
 
@@ -258,7 +258,7 @@ def test_average_fill_price_is_monotone_in_size():
     """A larger market order never gets a better average price.
 
     Walking further into the book can only reach worse prices, so the average
-    is monotone in size — the convexity that makes execution cost a real cost.
+    is monotone in size, the convexity that makes execution cost a real cost.
     """
     rng = random.Random(1008)
     for _ in range(DRAWS):
@@ -368,7 +368,7 @@ def test_ttl_orders_never_outlive_their_ttl():
 
 
 def test_a_simulation_is_a_deterministic_function_of_its_seed():
-    """Same seed, same tape — every price, quantity, side and timestamp.
+    """Same seed, same tape: every price, quantity, side and timestamp.
 
     Reproducibility is the only reason any number in the docs can be checked,
     so it is asserted rather than assumed.

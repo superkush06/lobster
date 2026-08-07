@@ -3,7 +3,7 @@
 A portfolio optimiser hands you target weights. A risk model hands you the
 covariance those weights were chosen against. Neither of them knows what it
 costs to get from where you are to where they say you should be, and the
-usual placeholder — a flat number of basis points, linear in size — is wrong
+usual placeholder (a flat number of basis points, linear in size) is wrong
 in a specific and expensive way: it has no shape, so it can never tell you
 to trade *part* of the way.
 
@@ -11,8 +11,8 @@ This script closes that loop without importing anything outside `lobster`.
 
 1. Work parent orders of increasing size through a simulated book on a fixed
    schedule, and measure implementation shortfall against the arrival mid.
-2. Express size as participation — the parent divided by the volume that
-   printed while it was working — and fit `cost = k * pi**delta` to it.
+2. Express size as participation, the parent divided by the volume that
+   printed while it was working, and fit `cost = k * pi**delta` to it.
 3. Take an inlined three-asset mean-variance problem (alphas, covariance, a
    current position), solve it with no cost term, then re-solve it along the
    rebalance direction paying the fitted cost.
@@ -24,7 +24,7 @@ a number that only a model of the book can produce.
     python examples/execution_costs.py
     python examples/execution_costs.py --trials 48   # tighter cost fit
 
-The portfolio maths here is three assets and a closed-form solve — it is a
+The portfolio maths here is three assets and a closed-form solve. It is a
 stand-in for the real thing, not a replacement for it. The cost number is
 what this package contributes.
 """
@@ -56,7 +56,7 @@ COV = (
 CURRENT = (0.55, 0.30, 0.15)
 RISK_AVERSION = 8.0
 
-# A small fund in three thinly traded names — the regime where execution
+# A small fund in three thinly traded names, the regime where execution
 # cost is not a rounding error. Shares, not dollars, because the book is.
 NAV = 10_000_000.0
 PRICE = 100.0
@@ -117,7 +117,7 @@ def calibrate(trials: int, warmup: int, seed: int) -> tuple[float, float,
     Shortfall is measured net of the arrival half-spread, so the fit
     describes the part of the cost that scales with size rather than the
     fixed toll every crossing order pays. Returns (k, delta) plus the
-    lowest and highest participation the fit actually covers — quoting a
+    lowest and highest participation the fit actually covers. Quoting a
     cost outside that range is extrapolation and the caller should know it.
     """
     print("  parent orders worked over "

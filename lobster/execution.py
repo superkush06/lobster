@@ -1,4 +1,4 @@
-"""Execution costs — what it actually costs to get a position on.
+"""Execution costs: what it actually costs to get a position on.
 
 The rest of the package is about the book. This module is about the bill.
 Two objects, deliberately kept apart because they measure different things
@@ -12,7 +12,7 @@ and the literature routinely conflates them:
 - `execute_metaorder` works a parent order into a *running* simulation in
   child slices, so the book replenishes between children and the other
   agents react. That is the object the empirical impact literature measures
-  — a metaorder worked over time — and it is the one whose exponent is worth
+  (a metaorder worked over time), and it is the one whose exponent is worth
   comparing with published numbers.
 
 `fit_power_law` is the two-line log-log OLS both of them get summarised by.

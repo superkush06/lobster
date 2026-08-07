@@ -87,7 +87,7 @@ def test_market_order_remainder_stays_on_taker():
     taker = Order(Side.BUY, qty=50, type=OrderType.MARKET)
     trades = match(book, taker)
     assert sum(t.qty for t in trades) == 5
-    assert taker.qty == 45          # leaves qty — book exhausted
+    assert taker.qty == 45          # leaves qty; book exhausted
     assert book.best_bid is None    # remainder did NOT rest
     assert book.best_ask is None
 

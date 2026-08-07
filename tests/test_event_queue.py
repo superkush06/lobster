@@ -28,7 +28,7 @@ def _make_agents(latency=None):
 
 def test_zero_latency_reproduces_synchronous_loop_exactly():
     """ConstantLatency(0) for every agent must be bit-identical to the
-    latency-free synchronous loop — the degenerate case of the event queue."""
+    latency-free synchronous loop, the degenerate case of the event queue."""
     sim_none = Simulation(agents=_make_agents(latency=None), seed=11)
     for _ in sim_none.run(steps=400):
         pass
