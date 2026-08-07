@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>lobster — latency buys queue position</title>
+<meta name="description" content="An order book matching engine running in your browser. Move the latency slider and watch queue position collapse." />
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1F2328; --dim: #59636e; --line: #d1d9e0;
+    --card: #f6f8fa; --accent: #0969da; --fast: #1a7f37; --slow: #cf222e;
+    --bid: #1a7f37; --ask: #cf222e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #f0f6fc; --dim: #9198a1; --line: #3d444d;
+      --card: #151b23; --accent: #4493f8; --fast: #3fb950; --slow: #f85149;
+      --bid: #3fb950; --ask: #f85149;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1.25rem 4rem; background: var(--bg); color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 880px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.02em; }
+  .sub { color: var(--dim); margin: 0 0 1.75rem; }
+  a { color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1.15rem 1.25rem; margin-bottom: 1.1rem; }
+  .row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  label { font-weight: 600; font-size: .93rem; }
+  input[type=range] { flex: 1 1 260px; accent-color: var(--accent); }
+  .val { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .95rem; min-width: 7.5rem; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+    padding: .5rem 1.1rem; font-size: .95rem; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { opacity: .55; cursor: default; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .9rem; }
+  .stat { border: 1px solid var(--line); border-radius: 8px; padding: .7rem .85rem; background: var(--bg); }
+  .stat .k { font-size: .78rem; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
+  .stat .v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.25rem; font-weight: 600; margin-top: .15rem; }
+  .fast { color: var(--fast); } .slow { color: var(--slow); }
+  .bar { height: 26px; border-radius: 5px; overflow: hidden; display: flex; border: 1px solid var(--line); }
+  .bar span { display: block; height: 100%; font-size: .8rem; color: #fff; text-align: center; line-height: 26px; font-family: ui-monospace, monospace; }
+  canvas { width: 100%; height: 190px; display: block; }
+  table { width: 100%; border-collapse: collapse; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .86rem; }
+  td { padding: .12rem .4rem; }
+  td.q { color: var(--dim); text-align: right; width: 4.5rem; }
+  .depth { display: inline-block; height: 11px; border-radius: 2px; vertical-align: middle; }
+  .status { color: var(--dim); font-size: .9rem; font-family: ui-monospace, monospace; }
+  .note { color: var(--dim); font-size: .88rem; }
+  h2 { font-size: 1.05rem; margin: 0 0 .8rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Latency buys queue position</h1>
+  <p class="sub">
+    Two market makers quote identical prices off the same mid. The only difference
+    between them is how long their orders take to reach the book. Everything below is
+    computed by <a href="https://github.com/superkush06/lobster">lobster</a>’s matching
+    engine — the actual Python package, compiled to WebAssembly and running in this tab.
+  </p>
+
+  <div class="card">
+    <div class="row">
+      <label for="fast">Fast maker wire delay</label>
+      <input id="fast" type="range" min="1" max="30" value="5" step="1" />
+      <span class="val" id="fastv">0.05 ticks</span>
+    </div>
+    <div class="row" style="margin-top:.6rem">
+      <label for="slow">Slow maker wire delay</label>
+      <input id="slow" type="range" min="1" max="30" value="15" step="1" />
+      <span class="val" id="slowv">0.15 ticks</span>
+    </div>
+    <div class="row" style="margin-top:.95rem">
+      <button id="run" disabled>Loading Python…</button>
+      <span class="status" id="status">booting Pyodide</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Who is first in line at the best bid?</h2>
+    <div class="bar" id="bar">
+      <span style="width:50%;background:var(--fast)">fast</span>
+      <span style="width:50%;background:var(--slow)">slow</span>
+    </div>
+    <p class="note" id="barnote" style="margin:.7rem 0 0">
+      Price–time priority: at a shared price level, whoever arrived first gets filled first.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>What that is worth</h2>
+    <div class="grid">
+      <div class="stat"><div class="k">Fast fills</div><div class="v fast" id="ff">—</div></div>
+      <div class="stat"><div class="k">Slow fills</div><div class="v slow" id="sf">—</div></div>
+      <div class="stat"><div class="k">Fast markout</div><div class="v fast" id="fm">—</div></div>
+      <div class="stat"><div class="k">Slow markout</div><div class="v slow" id="sm">—</div></div>
+    </div>
+    <p class="note" id="mnote" style="margin:.85rem 0 0">
+      Markout is the average mid move after a fill, signed by direction. Negative means
+      the price ran against you right after you traded — you were adversely selected.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Mid price</h2>
+    <canvas id="chart" width="1600" height="380"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Book at the final tick</h2>
+    <table id="book"><tbody></tbody></table>
+  </div>
+
+  <p class="note">
+    Source: <a href="https://github.com/superkush06/lobster">github.com/superkush06/lobster</a> ·
+    the driver this page calls is
+    <a href="https://github.com/superkush06/lobster/blob/main/docs/demo/sim.py">docs/demo/sim.py</a>,
+    about sixty lines.
+  </p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"
+        integrity="sha384-i3R37b3tF+HWudsUf1VSEOY2YxwSNMqY8DQa9Z0O3xh+NkJ9o+yjcGyIi5huj+nB"
+        crossorigin="anonymous"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+let pyodide = null, busy = false;
+
+function fmt(x, n = 4) { return (x >= 0 ? "+" : "") + x.toFixed(n); }
+
+async function boot() {
+  try {
+    pyodide = await loadPyodide();
+    $("status").textContent = "unpacking lobster";
+    const buf = await (await fetch("lobster-pkg.zip")).arrayBuffer();
+    await pyodide.unpackArchive(buf, "zip");
+    const driver = await (await fetch("sim.py")).text();
+    pyodide.FS.writeFile("sim.py", driver);
+    await pyodide.runPythonAsync("import sys; sys.path.insert(0, '.')\nimport sim");
+    $("run").disabled = false;
+    $("run").textContent = "Run the race";
+    $("status").textContent = "ready";
+    run();
+  } catch (e) {
+    $("status").textContent = "failed to load: " + e.message;
+  }
+}
+
+async function run() {
+  if (!pyodide || busy) return;
+  busy = true;
+  $("run").disabled = true;
+  $("status").textContent = "simulating…";
+  const f = (+$("fast").value) / 100, s = (+$("slow").value) / 100;
+  await new Promise((r) => setTimeout(r, 16)); // let the UI paint
+  const t0 = performance.now();
+  let res;
+  try {
+    res = (await pyodide.runPythonAsync(
+      `import json; json.dumps(sim.run(${f}, ${s}, 1500, 11))`
+    ));
+  } catch (e) {
+    $("status").textContent = "error: " + e.message;
+    busy = false; $("run").disabled = false; return;
+  }
+  const d = JSON.parse(res);
+  const ms = Math.round(performance.now() - t0);
+  draw(d, f, s);
+  $("status").textContent = `1,500 ticks · ${d.n_trades} trades · ${ms} ms`;
+  busy = false;
+  $("run").disabled = false;
+}
+
+function draw(d, f, s) {
+  const pct = d.front_share_fast * 100;
+  $("bar").innerHTML =
+    `<span style="width:${pct}%;background:var(--fast)">${pct.toFixed(0)}% fast</span>` +
+    `<span style="width:${100 - pct}%;background:var(--slow)">${(100 - pct).toFixed(0)}% slow</span>`;
+  const ratio = f > 0 ? (s / f) : 0;
+  $("barnote").textContent =
+    `The fast maker's orders arrive ${ratio.toFixed(1)}× sooner, and it holds the front of the ` +
+    `queue ${pct.toFixed(0)}% of the time (${d.front_fast} ticks to ${d.front_slow}).`;
+
+  $("ff").textContent = d.fills_fast.toLocaleString();
+  $("sf").textContent = d.fills_slow.toLocaleString();
+  $("fm").textContent = fmt(d.markout_fast);
+  $("sm").textContent = fmt(d.markout_slow);
+  const edge = f > 0 ? s / f : 1;
+  $("mnote").textContent =
+    (edge > 1.2 && d.markout_fast > 0 && d.markout_slow < 0)
+      ? "The sign flips: the fast maker earns on its fills while the slow maker is picked off. Same quotes, same prices — only the wire differs."
+      : (edge <= 1.2
+        ? "With both makers on the same wire the queue splits roughly evenly, and neither has a structural edge — which is the control case for the panel above."
+        : "Markout is the average mid move after a fill, signed by direction. Negative means the price ran against you right after you traded.");
+
+  // ---- mid price
+  const c = $("chart"), ctx = c.getContext("2d");
+  const css = getComputedStyle(document.documentElement);
+  const line = css.getPropertyValue("--accent").trim();
+  const grid = css.getPropertyValue("--line").trim();
+  const dim = css.getPropertyValue("--dim").trim();
+  ctx.clearRect(0, 0, c.width, c.height);
+  const m = d.mids;
+  if (m.length > 1) {
+    const lo = Math.min(...m), hi = Math.max(...m), pad = 34;
+    const X = (i) => pad + (i / (m.length - 1)) * (c.width - pad * 2);
+    const Y = (v) => c.height - pad - ((v - lo) / ((hi - lo) || 1)) * (c.height - pad * 2);
+    ctx.strokeStyle = grid; ctx.lineWidth = 1;
+    ctx.font = "22px ui-monospace, monospace"; ctx.fillStyle = dim;
+    for (let k = 0; k <= 3; k++) {
+      const v = lo + (hi - lo) * (k / 3), y = Y(v);
+      ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(c.width - pad, y); ctx.stroke();
+      ctx.fillText(v.toFixed(2), 4, y - 6);
+    }
+    ctx.strokeStyle = line; ctx.lineWidth = 2.5; ctx.beginPath();
+    m.forEach((v, i) => (i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))));
+    ctx.stroke();
+  }
+
+  // ---- book ladder
+  const all = [...d.asks, ...d.bids].map((r) => r[1]);
+  const mx = Math.max(1, ...all);
+  const rows = [];
+  [...d.asks].reverse().forEach(([p, q]) => rows.push(
+    `<tr><td class="q">${q}</td><td><span class="depth" style="width:${(q / mx) * 100}%;background:var(--ask)"></span></td><td style="color:var(--ask)">${p.toFixed(2)}</td></tr>`));
+  d.bids.forEach(([p, q]) => rows.push(
+    `<tr><td class="q">${q}</td><td><span class="depth" style="width:${(q / mx) * 100}%;background:var(--bid)"></span></td><td style="color:var(--bid)">${p.toFixed(2)}</td></tr>`));
+  $("book").querySelector("tbody").innerHTML = rows.join("");
+}
+
+$("fast").addEventListener("input", (e) => $("fastv").textContent = (e.target.value / 100).toFixed(2) + " ticks");
+$("slow").addEventListener("input", (e) => $("slowv").textContent = (e.target.value / 100).toFixed(2) + " ticks");
+$("fast").addEventListener("change", run);
+$("slow").addEventListener("change", run);
+$("run").addEventListener("click", run);
+boot();
+</script>
+</body>
+</html>

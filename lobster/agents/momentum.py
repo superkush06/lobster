@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..order import Order, OrderType, Side
 from .base import Agent, AgentContext
+
+if TYPE_CHECKING:
+    from ..latency import LatencyModel
 
 
 class MomentumAgent(Agent):
@@ -20,7 +25,7 @@ class MomentumAgent(Agent):
 
     def __init__(self, agent_id: int, lookback: int = 20,
                  threshold: float = 0.4, qty: int = 5,
-                 max_position: int | None = None, latency=None) -> None:
+                 max_position: int | None = None, latency: LatencyModel | None = None) -> None:
         super().__init__(agent_id, latency=latency)
         self.lookback = lookback
         self.threshold = threshold

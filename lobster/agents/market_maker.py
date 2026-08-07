@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from ..order import Order, Side
 from .base import Agent, AgentContext
+
+if TYPE_CHECKING:
+    from ..latency import LatencyModel
 
 
 class MarketMakerAgent(Agent):
@@ -17,7 +22,7 @@ class MarketMakerAgent(Agent):
     def __init__(self, agent_id: int, half_spread: float = 0.5,
                  qty: int = 20, inv_skew: float = 0.01,
                  inventory_cap: int = 200, cancel_replace: bool = True,
-                 ref_price: float = 100.0, latency=None) -> None:
+                 ref_price: float = 100.0, latency: LatencyModel | None = None) -> None:
         super().__init__(agent_id, latency=latency)
         self.half_spread = half_spread
         self.qty = qty

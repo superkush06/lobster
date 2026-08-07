@@ -23,10 +23,14 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from .book import OrderBook
 from .matching import match
 from .order import Order, OrderType, Side
+
+if TYPE_CHECKING:
+    from .sim import Simulation
 
 
 @dataclass(frozen=True)
@@ -94,11 +98,13 @@ def cost_to_trade(book: OrderBook, side: Side, qty: int) -> Sweep | None:
         touch_after = None  # walked the whole side away
     near = book.best_bid if side is Side.SELL else book.best_ask
     same = book.best_bid if side is Side.BUY else book.best_ask
+    if near is None or same is None:  # unreachable: book.mid was not None above
+        return None
     if touch_after is None:
         # Every level on the far side is gone; the best we can say is that the
         # touch moved to the last price traded.
         touch_after = notional / filled if filled else near
-    mid_after = (touch_after + same) / 2.0 if same is not None else touch_after
+    mid_after = (touch_after + same) / 2.0
     return Sweep(side=side, requested=qty, filled=filled, notional=notional,
                  arrival_mid=arrival, mid_after=mid_after)
 
@@ -143,7 +149,7 @@ class Metaorder:
         return self.side.value * (self.decay_mid - self.arrival_mid)
 
 
-def execute_metaorder(sim, side: Side, total_qty: int, slice_qty: int, *,
+def execute_metaorder(sim: Simulation, side: Side, total_qty: int, slice_qty: int, *,
                       every: int = 1, agent_id: int = 0,
                       start_ts: float = 0.0, dt: float = 1.0,
                       decay_steps: int = 0) -> Metaorder:

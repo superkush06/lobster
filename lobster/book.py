@@ -233,7 +233,7 @@ class OrderBook:
         src = self._bids if side is Side.BUY else self._asks
         return [(lv.price, lv.total_qty) for lv in src[:levels]]
 
-    def snapshot(self, levels: int = 5) -> dict:
+    def snapshot(self, levels: int = 5) -> dict[str, object]:
         return {
             "bids": self.depth(Side.BUY, levels),
             "asks": self.depth(Side.SELL, levels),

@@ -8,9 +8,14 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Two OSes on purpose: the engine is float-priced and the estimators sum
+    # long series, so summation order and libm differences are a real failure
+    # mode for the pinned numbers in README.md and docs/validation.md.
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
@@ -21,13 +26,7 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Lint
         run: ruff check .
+      - name: Types
+        run: mypy lobster
       - name: Test
-        run: |
-          set +e
-          pytest -q
-          code=$?
-          if [ "$code" = "5" ]; then
-            echo "no tests collected yet (bootstrap phase)"
-            exit 0
-          fi
-          exit $code
+        run: pytest -q

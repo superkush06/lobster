@@ -4,10 +4,17 @@
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+**[Run it in your browser →](https://superkush06.github.io/lobster/demo/)** — two market
+makers, identical quotes, different wire delays. Move the latency slider and watch
+queue position and markout move with it. That page runs this package under Pyodide;
+there is no server and no reimplementation.
+
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has
-latency. It is about 1,900 lines of dependency-free Python and 2,500 lines
-of tests (173 of them).
+latency. It is about 1,950 lines of dependency-free Python and 2,650 lines
+of tests (185 of them). Every number printed on this page is regenerated and
+diffed by `tests/test_readme_examples.py`, so the page cannot drift from the
+code.
 
 The hard part is not the data structure. Orders arrive in a different order
 than they were sent, a marketable order must never rest and cross the book,
@@ -240,7 +247,16 @@ filled is bad news. Speed buys better volume, not just more of it.
 all (`tests/test_event_queue.py` checks this), so the event queue is a
 strict superset of the synchronous loop rather than a replacement for it.
 
-## Replaying real data
+## Replaying the LOBSTER message format
+
+No real market data ships with this repository and none was used to validate
+it. `data/sample_messages.csv` is a **7-row synthetic fixture** written by
+hand in the LOBSTER message format (`Time, EventType, OrderID, Size, Price,
+Direction`), and it exists to exercise the parser and the book-reconstruction
+path — not to stand in for a NASDAQ capture. What this package replays is the
+*format*; what it reproduces of real markets is the stylized-facts scorecard
+above, which is measured against published microstructure results, not
+against a data feed.
 
 ```python
 from lobster import OrderBook, ReplayStats, replay_csv
@@ -259,8 +275,11 @@ print(f"applied={stats.applied} unknown={stats.unknown_total} clean={stats.clean
 applied=7 unknown=0 clean=True
 ```
 
-Real LOBSTER message files reference orders that were already resting when
-the capture window opened. A cold-start replay cannot match those ids, so it
+Real LOBSTER message files — the ones you would supply yourself, from
+lobsterdata.com or any venue that exports the same six columns — reference
+orders that were already resting when the capture window opened, which the
+fixture above deliberately does not. A cold-start replay cannot match those
+ids, so it
 counts them instead of dropping them silently: they land in
 `stats.unknown_*`, `stats.clean` tells you whether the reconstruction is
 faithful, and `strict=True` raises on the first one. Seed the book with
@@ -316,6 +335,21 @@ and between runs, so rather than quote mine, run
   simulate, plot, analyse, replay, end to end. Needs the `plot` extra and a
   Jupyter install; run it from the `examples/` directory, since it reads
   `../data/sample_messages.csv`.
+
+## What this is not
+
+- **Not a backtester.** There is no historical feed, no portfolio
+  accounting, no fill simulation against a recorded tape. `portopt` and
+  `risk` sit on the other side of that line; this repository only prices the
+  trip between them.
+- **Not a data vendor.** The only file under `data/` is the 7-row synthetic
+  LOBSTER-format fixture described above. Bring your own capture.
+- **Not a trading system.** No venue connectivity, no order gateway, no
+  risk controls. Nothing here should touch a live account.
+- **Not optimised.** Pure standard-library Python, no NumPy, no pandas, no
+  extension modules. The constraint is deliberate — it is what keeps the
+  matching engine and the estimators readable end to end, and it is why the
+  README quotes correctness numbers and not throughput numbers.
 
 ## Known limitations
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from .order import Side
@@ -55,7 +56,7 @@ class Tape:
     def __len__(self) -> int:
         return len(self._buf)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Trade]:
         return iter(self._buf)
 
     def vwap(self, n: int = 100) -> float | None:

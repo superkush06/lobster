@@ -21,11 +21,14 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "ruff>=0.5"]
+dev = ["pytest>=7", "ruff>=0.5", "mypy>=1.10"]
 plot = ["matplotlib>=3.7"]
 
 [tool.setuptools.packages.find]
 include = ["lobster*"]
+
+[tool.setuptools.package-data]
+lobster = ["py.typed"]
 
 [tool.ruff]
 line-length = 100
@@ -34,6 +37,11 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B"]
 ignore = ["E501", "E702"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["lobster"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -17,6 +17,7 @@ records the numbers with the reasons.
 
     python examples/validate.py            # ~20 s
     python examples/validate.py --quick    # ~4 s, coarser Monte Carlo
+    python examples/validate.py --part 1   # ~6 s, estimators only
 
 Nothing here is tuned to agree. Where the answer is embarrassing it is
 printed anyway.
@@ -301,23 +302,28 @@ def main() -> None:
     ap.add_argument("--quick", action="store_true",
                     help="fewer Monte Carlo paths and shorter simulations")
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--part", choices=["1", "2", "all"], default="all",
+                    help="1 = estimators only (~5 s), 2 = simulator only, "
+                         "all = both (default)")
     args = ap.parse_args()
     q = args.quick
 
     print("lobster — validation against external ground truth")
-    print("=" * 66)
-    print("Part 1: estimators against closed-form answers")
-    check_roll(reps=8 if q else 40, n=5_000 if q else 20_000)
-    check_variance_ratio(reps=300 if q else 1500, n=2_000)
-    check_book_walk(nlevels=4_000 if q else 20_000)
-    check_sqrt_impact()
+    if args.part in ("1", "all"):
+        print("=" * 66)
+        print("Part 1: estimators against closed-form answers")
+        check_roll(reps=8 if q else 40, n=5_000 if q else 20_000)
+        check_variance_ratio(reps=300 if q else 1500, n=2_000)
+        check_book_walk(nlevels=4_000 if q else 20_000)
+        check_sqrt_impact()
 
-    print("\n" + "=" * 66)
-    print("Part 2: the simulator against published stylized facts")
-    steps = 20_000 if q else 100_000
-    check_returns(steps, args.seed)
-    check_microstructure(steps, args.seed)
-    check_impact_law(trials=8 if q else 24, warmup=400, seed=1000)
+    if args.part in ("2", "all"):
+        print("\n" + "=" * 66)
+        print("Part 2: the simulator against published stylized facts")
+        steps = 20_000 if q else 100_000
+        check_returns(steps, args.seed)
+        check_microstructure(steps, args.seed)
+        check_impact_law(trials=8 if q else 24, warmup=400, seed=1000)
 
 
 if __name__ == "__main__":
