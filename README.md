@@ -26,8 +26,8 @@ reimplementation.
 
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has
-latency. It's about 2,145 lines of dependency-free Python and 3,048 lines
-of tests (232 of them). Every number printed on this page is regenerated and
+latency. It's about 2,225 lines of dependency-free Python and 3,277 lines
+of tests (244 of them). Every number printed on this page is regenerated and
 diffed by `tests/test_readme_examples.py`, so the page can't drift from the
 code.
 
@@ -229,9 +229,10 @@ autocorrelation, -0.058, where the reference is zero.
 
 ## Where this sits
 
-This is the microstructure end of a small stack. `portopt` decides what to
-hold (Markowitz, Black–Litterman, risk parity); `risk` decides how badly
-that can go (VaR, expected shortfall, stress scenarios). Neither knows what
+This is the microstructure end of the pipeline. Upstream of it live the
+portfolio questions: what to hold (Markowitz, Black–Litterman, risk parity)
+and how badly that can go (VaR, expected shortfall, stress scenarios).
+Neither question knows what
 it costs to get from the book you have to the one they asked for. The usual
 stand-in is a flat number of basis points, which is linear in size, so it
 can never tell you to trade only part of the way.
@@ -324,15 +325,49 @@ print(f"applied={stats.applied} unknown={stats.unknown_total} clean={stats.clean
 applied=7 unknown=0 clean=True
 ```
 
-Real LOBSTER message files, the ones you would supply yourself from
-lobsterdata.com or any venue that exports the same six columns, reference
-orders that were already resting when the capture window opened, which the
-fixture above deliberately doesn't. A cold-start replay can't match those
-ids, so it
-counts them instead of dropping them silently: they land in
-`stats.unknown_*`, `stats.clean` tells you whether the reconstruction is
-faithful, and `strict=True` raises on the first one. Seed the book with
-`OrderBook.from_snapshot` and the counters go to zero.
+### A real NASDAQ day, reconciled tick by tick
+
+The format claim is now measured against an actual trading day. LOBSTER's
+public sample pairs a message file with the exchange's own top-10 book after
+every message — an answer key, 400,391 rows long. Fetch it (the data itself
+stays out of git; the script verifies SHA256s) and replay it:
+
+```sh
+python tools/fetch_lobster_sample.py
+PYTHONPATH=. python examples/replay_real_day.py
+```
+
+```
+top-of-book exact         100.00% of rows   (best bid+ask, price and size)
+top-5 book exact          100.00% of rows
+full level-10 window     73.88% of rows   (band edge included - the boundary lives here)
+depth error               0.00% of shares over the exchange's top 5
+```
+
+The engine reproduces NASDAQ's official top-5 book **exactly, at every one
+of 400,390 events** in the AAPL 2012-06-21 sample — 372,074 events applied
+by order id, plus 16,984 against orders resting before the capture window,
+reconciled anonymously against the depth the opening snapshot vouched for
+(`on_unknown="reduce_level"`, with 0 unresolvable). The whole day replays in
+0.6 s (~650k messages/s, one CPython core).
+
+The honest asterisk is the band boundary, and it is structural. A level-10
+file carries no message for anything at level 11: that depth arrives,
+cancels, and trades in silence until the band shifts and it surfaces —
+holding shares this stream never described. On this day that is 104,562
+levels and 19.8M shares, imported from the official file *after* each row is
+scored and counted in the table, with 106,380 levels pruned the other way.
+Ignore the boundary and reconstruction collapses to 0.80% top-of-book
+agreement with a mean mid error of $2.14 — zombie levels pin the book while
+the real market walks away:
+
+![one day of NASDAQ messages replayed against the exchange's own book](docs/real_replay.png)
+
+The grey official mid is invisible under the band-aware line, which is the
+point. `tests/test_replay_reconcile.py` pins every number above where the
+data is present, and the synthetic fixture keeps the reconciliation
+semantics (pre-window ids, short levels, absent levels) under test where it
+isn't.
 
 ## What's in the box
 
@@ -388,11 +423,14 @@ and between runs, so rather than quote mine, run
 ## What this isn't
 
 - **Not a backtester.** There is no historical feed, no portfolio
-  accounting, no fill simulation against a recorded tape. `portopt` and
-  `risk` sit on the other side of that line; this repository only prices the
-  trip between them.
-- **Not a data vendor.** The only file under `data/` is the 7-row synthetic
-  LOBSTER-format fixture described above. Bring your own capture.
+  accounting, no fill simulation against a recorded tape. Portfolio
+  construction and risk sit on the other side of that line; this repository
+  only prices the trip between them.
+- **Not a data vendor.** The only file committed under `data/` is the 7-row
+  synthetic LOBSTER-format fixture described above; the real sample day is
+  fetched (and checksum-verified) by `tools/fetch_lobster_sample.py` into a
+  gitignored directory, because it is LOBSTER's to distribute, not this
+  repository's.
 - **Not a trading system.** No venue connectivity, no order gateway, no
   risk controls. Nothing here should touch a live account.
 - **Not optimised.** Pure standard-library Python, no NumPy, no pandas, no

@@ -15,3 +15,8 @@ htmlcov/
 .ipynb_checkpoints/
 *.swp
 .DS_Store
+
+# Real LOBSTER capture files fetched by tools/fetch_lobster_sample.py.
+# Never committed: the sample data is LOBSTER's to distribute, not this
+# repository's. The fetch script pins their SHA256 instead.
+data/real/

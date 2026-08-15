@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.6.0] - 2026-08-14
+
+### Added
+- **A real NASDAQ day, reconciled tick by tick.** The AAPL 2012-06-21
+  LOBSTER sample (400,391 messages, level 10) replays against the
+  exchange's own orderbook file and matches its top-5 book exactly at every
+  event — 372,074 events by order id, 16,984 reconciled anonymously against
+  snapshot depth, 0 unresolvable, 0.00% share error. The band boundary is
+  handled explicitly and counted (104,562 levels imported, 106,380 pruned);
+  the `--no-band-sync` ablation shows why (0.80% top-of-book agreement,
+  $2.14 mean mid error). `examples/replay_real_day.py` produces every
+  number and `docs/real_replay.png`; `tests/test_replay_reconcile.py` pins
+  them where the data is present.
+- **`OrderBook.reduce_at`**: anonymous FIFO depth reduction at a price
+  level, for events against orders a snapshot seed could not name. Refuses
+  to invent depth: returns the shortfall instead.
+- **`on_unknown` policy on the replay path** (`count` | `reduce_level` |
+  `raise`): what a cold-start replay does with events referencing
+  pre-window order ids. `ReplayStats` gains `level_reduced` and
+  `unresolvable`.
+- **`tools/fetch_lobster_sample.py`**: fetches the sample day into
+  gitignored `data/real/`, tries the official host first, falls back to a
+  public mirror, and accepts nothing whose SHA256 does not match the pinned
+  checksums.
+
 ## [0.5.0] - 2026-07-27
 
 ### Added

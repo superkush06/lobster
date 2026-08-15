@@ -22,16 +22,35 @@ book. Prices are taken as-is (LOBSTER stores price * 10000; pass
 
 Real message files reference orders that were already resting when the
 capture window opened, so a cold-start replay *will* see executions and
-cancels for order ids it has never been told about. Those events are
-counted in `ReplayStats` (``unknown_execs`` / ``unknown_cancels`` /
-``unknown_deletes``) rather than silently dropped; pass ``strict=True`` to
-raise `UnknownOrderError` on the first one instead. To reconstruct depth
-faithfully, seed the opening book from the companion orderbook file via
-`OrderBook.from_snapshot` before replaying:
+cancels for order ids it has never been told about. What happens next is the
+``on_unknown`` policy:
+
+``"count"`` (default)
+    Count the event on `ReplayStats` (``unknown_execs`` / ``unknown_cancels``
+    / ``unknown_deletes``) and leave the book alone.
+``"reduce_level"``
+    Also decrement resting depth at the event's ``(side, price)`` by its
+    size, front of the FIFO first. A snapshot seed puts depth on the book
+    without the exchange's order ids, so this is the only way an event
+    against a pre-window order can land where the snapshot says the shares
+    are. Events that fully land count as ``level_reduced``; any shortfall
+    (level short or absent) counts as ``unresolvable``. The corruption risk
+    is double removal: if the id later turns out to be live after all — or
+    the same pre-window shares are hit once by id guesswork and once by
+    level — depth is removed twice and the reconstruction runs shallow, so
+    this policy belongs with a snapshot seed and a diff against the
+    exchange's own orderbook file, never on faith.
+``"raise"``
+    Raise `UnknownOrderError` on the first such event (``strict=True`` is
+    the older spelling and takes precedence).
+
+To reconstruct depth faithfully, seed the opening book from the companion
+orderbook file via `OrderBook.from_snapshot` before replaying:
 
     book = OrderBook.from_snapshot(bids=[(99.5, 300)], asks=[(100.0, 250)])
     stats = ReplayStats()
-    replay_csv("messages.csv", price_scale=1e-4, book=book, stats=stats)
+    replay_csv("messages.csv", price_scale=1e-4, book=book, stats=stats,
+               on_unknown="reduce_level")
 """
 
 from __future__ import annotations
@@ -68,6 +87,11 @@ class ReplayStats:
     unknown_execs: int = 0
     unknown_cancels: int = 0
     unknown_deletes: int = 0
+    # Outcomes of unknown events under on_unknown="reduce_level". The
+    # unknown_* counters above record the fact of the stream; these record
+    # what the policy managed to do about it.
+    level_reduced: int = 0
+    unresolvable: int = 0
     skipped_types: dict[int, int] = field(default_factory=dict)
 
     @property
@@ -112,13 +136,16 @@ def parse_lobster_line(line: str, *, price_scale: float = 1.0) -> Message:
 
 def apply_message(book: OrderBook, msg: Message, *,
                   strict: bool = False,
-                  stats: ReplayStats | None = None) -> None:
+                  stats: ReplayStats | None = None,
+                  on_unknown: str = "count") -> None:
     """Apply a single message to the book, mutating it in place.
 
     Events that reference an order id the book does not hold (pre-window
-    orders in a cold-start replay) are counted on `stats` and, with
-    `strict=True`, raise `UnknownOrderError`.
+    orders in a cold-start replay) follow the `on_unknown` policy described
+    in the module docstring; `strict=True` forces ``"raise"``.
     """
+    if on_unknown not in ("count", "reduce_level", "raise"):
+        raise ValueError(f"on_unknown must be count|reduce_level|raise, got {on_unknown!r}")
     if msg.event_type == NEW:
         # allow_crossed: with incomplete pre-window context a real feed can
         # transiently look crossed; trust the exchange's message stream.
@@ -131,13 +158,13 @@ def apply_message(book: OrderBook, msg: Message, *,
         # Both remove `size` shares from a known resting order.
         removed = book.reduce(msg.order_id, msg.size)
         if removed == 0:
-            _unknown(msg, strict, stats)
+            _unknown(book, msg, strict, stats, on_unknown)
         elif stats is not None:
             stats.applied += 1
     elif msg.event_type == DELETE:
         cancelled = book.cancel(msg.order_id)
         if cancelled is None:
-            _unknown(msg, strict, stats)
+            _unknown(book, msg, strict, stats, on_unknown)
         elif stats is not None:
             stats.applied += 1
     else:
@@ -148,8 +175,9 @@ def apply_message(book: OrderBook, msg: Message, *,
             )
 
 
-def _unknown(msg: Message, strict: bool, stats: ReplayStats | None) -> None:
-    if strict:
+def _unknown(book: OrderBook, msg: Message, strict: bool,
+             stats: ReplayStats | None, on_unknown: str) -> None:
+    if strict or on_unknown == "raise":
         raise UnknownOrderError(
             f"event type {msg.event_type} at t={msg.time} references unknown "
             f"order id {msg.order_id} (resting before the capture window?)"
@@ -161,22 +189,31 @@ def _unknown(msg: Message, strict: bool, stats: ReplayStats | None) -> None:
             stats.unknown_execs += 1
         else:
             stats.unknown_deletes += 1
+    if on_unknown == "reduce_level":
+        removed = book.reduce_at(msg.side, msg.price, msg.size)
+        if stats is not None:
+            if removed == msg.size:
+                stats.level_reduced += 1
+            else:
+                stats.unresolvable += 1
 
 
 def replay(messages: list[Message], book: OrderBook | None = None, *,
            strict: bool = False,
-           stats: ReplayStats | None = None) -> OrderBook:
+           stats: ReplayStats | None = None,
+           on_unknown: str = "count") -> OrderBook:
     """Apply a sequence of messages and return the resulting book."""
     book = book if book is not None else OrderBook()
     for msg in messages:
-        apply_message(book, msg, strict=strict, stats=stats)
+        apply_message(book, msg, strict=strict, stats=stats, on_unknown=on_unknown)
     return book
 
 
 def replay_csv(path: str, *, price_scale: float = 1.0,
                book: OrderBook | None = None,
                strict: bool = False,
-               stats: ReplayStats | None = None) -> OrderBook:
+               stats: ReplayStats | None = None,
+               on_unknown: str = "count") -> OrderBook:
     """Replay a LOBSTER message CSV file from disk."""
     book = book if book is not None else OrderBook()
     with open(path) as f:
@@ -185,5 +222,5 @@ def replay_csv(path: str, *, price_scale: float = 1.0,
             if not line:
                 continue
             apply_message(book, parse_lobster_line(line, price_scale=price_scale),
-                          strict=strict, stats=stats)
+                          strict=strict, stats=stats, on_unknown=on_unknown)
     return book

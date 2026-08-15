@@ -238,6 +238,49 @@ class OrderBook:
             del prices[idx]
         return removed
 
+    def reduce_at(self, side: Side, price: float, qty: int) -> int:
+        """Remove up to `qty` shares of resting depth at `price`, anonymously.
+
+        This exists for replaying real feeds seeded from a depth snapshot:
+        the snapshot gives per-level quantity but not the resting order ids,
+        so a cancel or execution against a pre-window order cannot be applied
+        by id. Reducing the level it names is the standard LOBSTER
+        reconstruction move — depth is what the snapshot vouched for, so
+        depth is what the event adjusts.
+
+        Shares come off the front of the FIFO queue (the oldest resting
+        orders), which is where pre-window orders sit after a snapshot seed.
+        Orders drained to zero leave the id index, and an emptied level is
+        pruned. Returns the quantity actually removed, which is less than
+        `qty` when the level is short or absent.
+        """
+        if qty <= 0:
+            return 0
+        if side is Side.BUY:
+            levels, prices = self._bids, self._bid_prices
+            key = -price
+        else:
+            levels, prices = self._asks, self._ask_prices
+            key = price
+        idx = bisect.bisect_left(prices, key)
+        if idx >= len(prices) or prices[idx] != key:
+            return 0
+        level = levels[idx]
+        remaining = qty
+        while remaining > 0 and level.orders:
+            head = level.orders[0]
+            taken = min(remaining, head.qty)
+            head.qty -= taken
+            level.total_qty -= taken
+            remaining -= taken
+            if head.qty == 0:
+                level.orders.popleft()
+                self._index.pop(head.id, None)
+        if not level.orders:
+            del levels[idx]
+            del prices[idx]
+        return qty - remaining
+
     # ---- queries ------------------------------------------------------------
 
     def depth(self, side: Side, levels: int = 5) -> list[tuple[float, int]]:
