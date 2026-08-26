@@ -38,8 +38,12 @@ class PriceLevel:
         """Reduce a resting order's size by `qty` (partial execution/cancel).
 
         Removes the order entirely if it reaches zero. Returns the quantity
-        actually removed (0 if `order_id` is not on this level).
+        actually removed (0 if `order_id` is not on this level, and 0 for
+        `qty <= 0`: min(qty, o.qty) with a negative qty would *grow* the
+        order, which is corruption, not a reduction).
         """
+        if qty <= 0:
+            return 0
         for i, o in enumerate(self.orders):
             if o.id == order_id:
                 removed = min(qty, o.qty)
@@ -214,8 +218,12 @@ class OrderBook:
 
         Drops the order from the index if it reaches zero, and prunes the
         price level if it becomes empty. Returns the quantity removed (0 if
-        the order is not resting).
+        the order is not resting, and 0 for `qty <= 0`, same as `reduce_at`:
+        a replay feeds this sizes parsed from a CSV, and a negative size
+        must not inflate a resting order).
         """
+        if qty <= 0:
+            return 0
         info = self._index.get(order_id)
         if info is None:
             return 0

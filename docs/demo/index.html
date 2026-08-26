@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>lobster: a stock exchange you can take apart</title>
-<meta name="description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run five experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
+<meta name="description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run five experiments that measure what changed. A real matching engine, running in your browser under Pyodide (CPython compiled to WebAssembly)." />
 <meta name="theme-color" content="#F7F4EF" />
 <meta name="author" content="Kushagra Behl" />
 <link rel="canonical" href="https://superkush06.github.io/lobster/demo/" />
@@ -16,7 +16,7 @@
 <meta property="og:site_name" content="lobster" />
 <meta property="og:url" content="https://superkush06.github.io/lobster/demo/" />
 <meta property="og:title" content="lobster: a stock exchange you can take apart" />
-<meta property="og:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run five experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
+<meta property="og:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run five experiments that measure what changed. A real matching engine, running in your browser under Pyodide (CPython compiled to WebAssembly)." />
 <meta property="og:image" content="https://superkush06.github.io/lobster/demo/card.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
@@ -24,7 +24,7 @@
 <meta property="og:image:alt" content="A limit order book ladder. At one price level a blue block labelled FAST sits ahead of an orange block labelled SLOW, annotated: both makers at this price." />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="lobster: a stock exchange you can take apart" />
-<meta name="twitter:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run five experiments that measure what changed. A real matching engine, compiled to WebAssembly and running in your browser." />
+<meta name="twitter:description" content="An interactive visualisation of a limit order book. Change who is trading and watch the market change, then run five experiments that measure what changed. A real matching engine, running in your browser under Pyodide (CPython compiled to WebAssembly)." />
 <meta name="twitter:image" content="https://superkush06.github.io/lobster/demo/card.png" />
 <meta name="twitter:image:alt" content="A limit order book ladder with a fast maker queued ahead of a slow maker at the same price." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -238,8 +238,8 @@
   <h1>lobster: a stock exchange you can take apart</h1>
   <p class="dek">An interactive visualisation of a limit order book. Start with a live market,
     change who is trading in it, then run five experiments that measure what changed. Every
-    number on this page is computed here, in this tab, by a matching engine compiled to
-    WebAssembly.</p>
+    number on this page is computed here, in this tab, by a matching engine running under
+    Pyodide (CPython compiled to WebAssembly).</p>
   <div class="banner">
     <span><b>00</b> &nbsp;Live market</span>
     <span><b>01</b> &nbsp;The queue</span>
@@ -420,7 +420,7 @@
   <p class="thesis">Cost grows like the square root of size in every market anyone has
     measured. Does it here, and what in the book makes that happen?</p>
   <p>That was one order at a time. Now a different question, and a different set of agents in
-    the book: you want to buy fifteen hundred lots, far more than is resting, so you cut it into
+    the book: you want to buy twelve hundred eighty lots, far more than is resting, so you cut it into
     eight-lot children and work them in. What do you pay per share, and how does that scale?</p>
 
   <p>The answer is one of the most reliable measurements in finance. Cost grows roughly like the
@@ -494,15 +494,6 @@
   <figure><canvas id="clust"></canvas></figure>
 </div>
 
-<div class="text">
-  <p>Past the end of the side there is nothing to extrapolate with, so a sweep that can't be
-    filled comes back marked incomplete and reports how much it managed, rather than inventing
-    a price for the remainder. That's the difference between this figure and the one above it.
-    Here the whole trade goes at once and pays what the book is asking; the second experiment
-    works the same quantity in over three hundred ticks and lets liquidity come back between
-    children. The gap between those two numbers is the reason execution algorithms exist.</p>
-</div>
-
 <div class="text"><div class="finding"><span class="m">Finding &middot; experiment three</span><p id="sClust"></p></div></div>
 <div class="endrule"><div></div></div>
 
@@ -536,6 +527,15 @@
     <span class="m" id="walkState"></span>
   </div>
 </div>
+
+<div class="text">
+  <p>Past the end of the side there is nothing to extrapolate with, so a sweep that can't be
+    filled comes back marked incomplete and reports how much it managed, rather than inventing
+    a price for the remainder. Here the whole trade goes at once and pays what the book is
+    asking; the second experiment works its parent order in over three hundred ticks and lets
+    liquidity come back between children. The gap between those two costs is the reason
+    execution algorithms exist.</p>
+</div>
 <div class="text"><div class="finding"><span class="m">Finding &middot; experiment four</span><p id="sWalk"></p></div></div>
 <div class="endrule"><div></div></div>
 
@@ -557,6 +557,10 @@
   <p>The feed on the left is generated rather than downloaded, because the real files are
     licensed and gigabytes wide, but the format and the event vocabulary are LOBSTER's and
     <span class="n">parse_lobster_line</span> reads these exactly as it reads NASDAQ's. The
+    same path has been run against a real day: the README's
+    <a href="https://github.com/superkush06/lobster#a-real-nasdaq-day-reconciled-tick-by-tick">A
+    real NASDAQ day, reconciled tick by tick</a> replays LOBSTER's AAPL sample against the
+    exchange's own orderbook file, message by message. The
     book on the right is being rebuilt from it as you watch:</p>
 </div>
 
@@ -597,8 +601,8 @@
     a brochure.</p>
 
   <footer>
-    <span id="runCount">Forty-four</span> simulations ran in this tab while you read this,
-    on a matching engine compiled to WebAssembly. Nothing above was precomputed, which is why
+    <span id="runCount">A number of</span> simulations ran in this tab while you read this,
+    on a matching engine running under Pyodide (CPython compiled to WebAssembly). Nothing above was precomputed, which is why
     moving a handle costs a few seconds. The engine is
     <a href="https://github.com/superkush06/lobster">lobster</a>, and this page adds no market
     logic of its own; it calls into that engine through

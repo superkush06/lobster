@@ -54,9 +54,10 @@ class ValueAgent(Agent):
 
     # Defaults are the calibration docs/validation.md 2c reports against: they
     # put the bundled mix's cost exponent on the empirical 0.5 to 0.6 band.
-    # `slope` and `refill` are the two that matter. Raising either makes the
-    # book too elastic for a parent order to walk at all and drives the
-    # exponent back toward 1.
+    # The exponent is not very sensitive to them: rerunning 2c with slope and
+    # refill at 2x and 4x the defaults moves it from 0.57 to 0.58 and 0.60.
+    # What the agent's presence changes is the regime; without any value
+    # ladder, nothing resists a parent order and cost comes out convex.
     def __init__(self, agent_id: int, value: float = 100.0, levels: int = 40,
                  tick: float = 0.05, slope: float = 2.0, refill: int = 10,
                  value_drift: float = 0.02, max_position: int = 20_000,

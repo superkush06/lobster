@@ -26,8 +26,8 @@ reimplementation.
 
 `lobster` is a limit order book simulator: a price-time-priority matching
 engine, agents that quote and take, and a wire between them that has
-latency. It's about 2,225 lines of dependency-free Python and 3,277 lines
-of tests (244 of them). Every number printed on this page is regenerated and
+latency. It's about 2,234 lines of dependency-free Python and 3,294 lines
+of tests (245 of them). Every number printed on this page is regenerated and
 diffed by `tests/test_readme_examples.py`, so the page can't drift from the
 code.
 
@@ -223,9 +223,11 @@ piece, and the section
 [The row that used to fail, and what fixed it](docs/validation.md) shows the
 mechanism, the calibration, and what else moved when it landed.
 
-Two rows still miss. Order-flow memory is gone by lag 128 where real flow
-lasts thousands of trades, and returns carry a small negative
-autocorrelation, -0.058, where the reference is zero.
+Three of the fourteen facts still miss, counting a fact as missed if either
+agent mix misses it. Order-flow memory is gone by lag 89 to 128 where real
+flow lasts thousands of trades; its decay exponent reads 1.29 in the demo
+mix against a published 0.5 (the no-chaser mix gets 0.52); and returns carry
+a small negative autocorrelation, -0.058, where the reference is zero.
 
 ## Where this sits
 
@@ -244,6 +246,12 @@ imported from the sibling repos; the upstream inputs are written out):
 
 ```
   cost per share = 0.437 * participation^1.39, fitted over 18%-63% participation
+  the exponent is above 1, so cost is convex in the rate you trade at.
+  Note this is the participation curve, not the size curve: the horizon is fixed, so a
+  bigger parent here means trading faster rather than trading for longer. The size law
+  is the one published studies put near 0.5, and docs/validation.md 2c measures it
+  separately. Participation this high (a fifth to two thirds of printed volume) is far
+  outside the few-percent range those studies cover, and cost is expected to bend up.
 
     fraction moved   utility gain      cost        net
                 0%        0.0000%   0.0000%    0.0000%
@@ -257,8 +265,12 @@ imported from the sibling repos; the upstream inputs are written out):
 ```
 
 The optimiser wanted the whole move; at this fund size the whole move
-destroys value. The stopping point, 30%, comes from the cost curve, and you
-only get that curve from a model of the book.
+destroys value. The stopping point, 80% of the way, comes from the cost
+curve, and you only get that curve from a model of the book. The 1.39 in
+that curve and the 0.57 in the scorecard are not in tension: at a fixed
+horizon a bigger parent means trading faster, which is convex, while the
+size law at a fixed rate is the concave one the literature puts near 0.5,
+and section 2c of `docs/validation.md` measures it separately.
 
 ## Latency buys queue position
 
@@ -279,19 +291,23 @@ steps=4000  seed=11  trades=1706
 
 Three times the speed holds the front of the queue 73% of the time and
 captures four times the passive volume. Both of those replicate: across
-seeds 1 to 12 at this configuration the fast maker leads the queue in 12 of
-12 runs, on 67% to 78% of ticks, with a mean 1,116 passive fills against 232.
+seeds 1 to 12 at this configuration
+(`python examples/latency_race.py --steps 4000 --seeds 1-12` prints the
+summary) the fast maker holds 70.2% to 76.7% of front-of-queue ticks, with
+a mean 3,022 passive fills against 597.
 
 The markout is where a single run misleads, and the ratio printed above is
 the reason to say so. On this seed the slow maker's -0.00422 against the fast
 maker's -0.00019 looks like a factor of twenty. Over the same twelve seeds
-the means are -0.0072 and -0.0221, the fast maker comes out ahead in 8 runs
-of 12, and the seed-to-seed spread of the gap (sd 0.029 against a mean of
-0.015, so t is about 1.8 on 11 degrees of freedom) is too wide to call it.
-Latency buys queue position here beyond any doubt. Whether it also buys a
-better trade is a claim this simulator cannot support at this sample size,
-and the demo's experiment 01 recomputes the whole sweep in the browser to
-show it.
+the means are -0.0134 and -0.0122, the fast maker comes out ahead in only 6
+runs of 12, and the seed-to-seed spread of the gap (sd 0.0265 against a mean
+of -0.0012, t = -0.16 on 11 degrees of freedom) says twelve seeds cannot
+call it either way. Push to sixty (`--seeds 1-60`) and the sign settles the
+wrong way for the fast maker: gap mean -0.0092, sd 0.0223, t = -3.19. Being
+first in queue means being filled first when flow is about to move the
+price, so what latency buys here, beyond any doubt, is queue position and
+volume; the trades it wins are the adversely selected ones. The demo's
+experiment 01 recomputes the twelve-seed sweep in the browser.
 
 `ConstantLatency(0)` is bit-identical to running with no latency model at
 all (`tests/test_event_queue.py` checks this), so the event queue is a
@@ -299,8 +315,11 @@ strict superset of the synchronous loop rather than a replacement for it.
 
 ## Replaying the LOBSTER message format
 
-No real market data ships with this repository and none was used to validate
-it. `data/sample_messages.csv` is a **7-row synthetic fixture** written by
+No real market data ships in git; the AAPL sample day below is fetched and
+checksum-verified by `tools/fetch_lobster_sample.py`, and what it validates
+is the replay and reconciliation path. The agent simulation and the
+scorecard are measured against published results, not against a data feed.
+`data/sample_messages.csv` is a **7-row synthetic fixture** written by
 hand in the LOBSTER message format (`Time, EventType, OrderID, Size, Price,
 Direction`), and it exists to exercise the parser and the book-reconstruction
 path, rather than to stand in for a NASDAQ capture. What this package replays is the
@@ -329,7 +348,9 @@ applied=7 unknown=0 clean=True
 
 The format claim is now measured against an actual trading day. LOBSTER's
 public sample pairs a message file with the exchange's own top-10 book after
-every message — an answer key, 400,391 rows long. Fetch it (the data itself
+every message: an answer key, 400,391 rows long. The first row seeds the
+book (its effect is already inside the first orderbook row), so 400,390
+events get replayed and scored. Fetch it (the data itself
 stays out of git; the script verifies SHA256s) and replay it:
 
 ```sh
@@ -345,21 +366,23 @@ depth error               0.00% of shares over the exchange's top 5
 ```
 
 The engine reproduces NASDAQ's official top-5 book **exactly, at every one
-of 400,390 events** in the AAPL 2012-06-21 sample — 372,074 events applied
-by order id, plus 16,984 against orders resting before the capture window,
-reconciled anonymously against the depth the opening snapshot vouched for
+of 400,390 events** in the AAPL 2012-06-21 sample: 372,074 events applied
+by order id, plus 16,984 whose id the book could not hold (8,381 resting
+before the capture window ever opened, 8,603 consumed with their level when
+it fell out of the band), each reconciled anonymously against the depth the
+official file vouched for
 (`on_unknown="reduce_level"`, with 0 unresolvable). The whole day replays in
 0.6 s (~650k messages/s, one CPython core).
 
 The honest asterisk is the band boundary, and it is structural. A level-10
 file carries no message for anything at level 11: that depth arrives,
-cancels, and trades in silence until the band shifts and it surfaces —
+cancels, and trades in silence until the band shifts and it surfaces,
 holding shares this stream never described. On this day that is 104,562
 levels and 19.8M shares, imported from the official file *after* each row is
 scored and counted in the table, with 106,380 levels pruned the other way.
 Ignore the boundary and reconstruction collapses to 0.80% top-of-book
-agreement with a mean mid error of $2.14 — zombie levels pin the book while
-the real market walks away:
+agreement with a mean mid error of $2.14, zombie levels pinning the book
+while the real market walks away:
 
 ![one day of NASDAQ messages replayed against the exchange's own book](docs/real_replay.png)
 
@@ -435,14 +458,17 @@ and between runs, so rather than quote mine, run
   risk controls. Nothing here should touch a live account.
 - **Not optimised.** Pure standard-library Python, no NumPy, no pandas, no
   extension modules. The constraint is deliberate, and it's what keeps the
-  matching engine and the estimators readable end to end, and it's why the
-  README quotes correctness numbers and not throughput numbers.
+  matching engine and the estimators readable end to end.
 
 ## Known limitations
 
-- **No informed traders and no parent orders.** Both show up directly in the
-  scorecard above: nothing anchors the price, and order-flow memory dies
-  with the momentum agent's lookback.
+- **One informed trader, and only by another name.** `ValueAgent` anchors
+  the price, and anchors it too hard: the mid reverts instead of following
+  a random walk (VR(100) is about 0.44 in the scorecard, against 1.0), and
+  its refill ladder is a split parent order in effect, so order-flow memory
+  has the right sign without the published thousands-of-trades horizon.
+  There is no flow with private information about a future price, because
+  no such future exists in the simulator to know about.
 - **No tick size.** Prices are floats rounded to two decimals at agent
   boundaries. Queue dynamics at the touch depend heavily on the tick in real
   venues.

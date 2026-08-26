@@ -43,7 +43,6 @@ from lobster.execution import (
     fit_power_law,
 )
 from lobster.latency import ConstantLatency, JitteredLatency
-from lobster.matching import match
 from lobster.order import Side
 from lobster.replay import (
     ReplayStats,
@@ -444,40 +443,6 @@ def walk(qty: int):
         "impact": round(sw.impact, 4),
         "arrival_mid": round(sw.arrival_mid, 4),
         "mid_after": round(sw.mid_after, 4),
-    }
-
-
-def engine_facts(n: int = 20_000):
-    """Throughput of the two hot paths, measured in whatever is running this.
-
-    Quoted next to the native figure so the WebAssembly tax is visible rather
-    than hidden. `benchmarks/throughput.py` is the same measurement.
-    """
-    import time
-
-    from lobster.book import OrderBook
-    from lobster.order import Order, OrderType
-
-    book = OrderBook()
-    t0 = time.perf_counter()
-    for i in range(n):
-        side = Side.BUY if i % 2 else Side.SELL
-        px = 99.0 - (i % 40) * 0.01 if side is Side.BUY else 101.0 + (i % 40) * 0.01
-        book.add(Order(side=side, qty=10, price=round(px, 2)))
-    insert_s = time.perf_counter() - t0
-
-    t0 = time.perf_counter()
-    hits = 0
-    for _ in range(n // 4):
-        tr = match(book, Order(side=Side.BUY, qty=5, type=OrderType.MARKET))
-        hits += len(tr)
-        if book.best_ask is None:
-            break
-    match_s = time.perf_counter() - t0
-    return {
-        "inserts_per_s": int(n / insert_s) if insert_s else 0,
-        "matches_per_s": int((n // 4) / match_s) if match_s else 0,
-        "trades": hits,
     }
 
 

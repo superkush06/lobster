@@ -227,3 +227,20 @@ def test_the_real_day_numbers_are_the_ones_documented():
         "band demotions pruned     106,380 levels / 19,668,918 shares",
     ):
         assert line in out, f"expected {line!r} in the real-day table\n{out}"
+
+
+def test_a_negative_reduction_is_refused_not_applied_in_reverse():
+    """min(qty, o.qty) with qty < 0 would grow the order; the guard says no.
+
+    A replay feeds `reduce` sizes parsed straight from a CSV, so one corrupt
+    row must not quietly inflate resting depth. Zero is refused too: there
+    is nothing to reduce by.
+    """
+    book = OrderBook()
+    book.add(Order(side=Side.BUY, qty=100, price=99.0, agent_id=0, id=1, ts=0.0))
+    assert book.reduce(1, -50) == 0
+    assert book.reduce(1, 0) == 0
+    assert book.reduce_at(Side.BUY, 99.0, -50) == 0
+    assert book.depth(Side.BUY, 1) == [(99.0, 100)]
+    assert book.reduce(1, 30) == 30
+    assert book.depth(Side.BUY, 1) == [(99.0, 70)]

@@ -233,19 +233,24 @@ runs with different trade intensity.
 
 In the latency race the fast maker's markout is $-0.00019$ against the slow
 maker's $-0.00422$, which reads as a factor of twenty. It is one seed. Over
-seeds 1 to 12 at the same configuration the means are $-0.0072$ and
-$-0.0221$, the fast maker is ahead in 8 runs of 12, and the gap has a
-standard deviation of $0.029$ against a mean of $0.015$, so $t \approx 1.8$
-on 11 degrees of freedom. That is the direction the standard story predicts,
-and it is not enough evidence to claim it.
+seeds 1 to 12 at the same configuration
+(`examples/latency_race.py --steps 4000 --seeds 1-12`) the means are
+$-0.0134$ and $-0.0122$, the fast maker is ahead in 6 runs of 12, and the
+gap has a standard deviation of $0.0265$ against a mean of $-0.0012$, so
+$t = -0.16$ on 11 degrees of freedom: twelve seeds cannot call it. Sixty
+seeds can, and they call it against the fast maker: gap mean $-0.0092$,
+standard deviation $0.0223$, $t = -3.19$.
 
-The mechanism that story proposes is that the fast maker holds the front of
-the queue in ordinary conditions and takes the benign flow, while the slow
-maker fills mainly once the queue ahead of it has been consumed, which is
-exactly when something large is walking the book. The queue half of that is
-measured here and is unambiguous, at 12 runs of 12. The adverse-selection
-half is not, and separating the two would need either far more seeds or an
-agent whose informed flow is labelled.
+That sign is the interesting one. The standard story says the fast maker
+holds the front of the queue in ordinary conditions, while the slow maker
+fills mainly once the queue ahead of it has been consumed, which is exactly
+when something large is walking the book. What the sweep measures is the
+queue half (unambiguous: the fast maker holds 70% to 77% of front-of-queue
+ticks and five times the passive volume) and a markout that is worse for
+the maker who stands at the front: first in queue is first to be filled by
+the flow that moves the price. Separating how much of that is adverse
+selection against the front of the queue, rather than volume composition,
+would need an agent whose informed flow is labelled.
 
 ---
 

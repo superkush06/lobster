@@ -312,75 +312,78 @@ Part 2: the simulator against published stylized facts
 2a. Return distribution and volatility clustering (Cont 2001)
 -------------------------------------------------------------
 
-  [demo mix]  99,966 tick returns, 53.9% of them exactly zero
-  excess kurtosis of tick returns                           256.75   vs > 0 (heavy tailed)        yes
-  Hill tail index of |r|, top 5%                              1.84   vs 2 to 5                    outside the band
-  excess kurtosis, 100-tick aggregation                      92.21   vs < 256.75 (toward 0)       yes
-  lag-1 autocorrelation of tick returns                    +0.0982   vs ~0 (Cont 2001)            no
-  rho(|r|) at lag 1                                        +0.2675   vs > 0                       yes
-  rho(|r|) at lag 100                                      +0.0520   vs > 0, slow decay           yes
-  decay exponent of rho(|r|)                                  0.55   vs < 1 (long memory)         yes
+  [demo mix]  99,999 tick returns, 60.7% of them exactly zero
+  excess kurtosis of tick returns                            13.92   vs > 0 (heavy tailed)        yes
+  Hill tail index of |r|, top 5%                              2.75   vs 2 to 5                    yes
+  excess kurtosis, 100-tick aggregation                       2.70   vs < 13.92 (toward 0)        yes
+  lag-1 autocorrelation of tick returns                    -0.0584   vs ~0 (Cont 2001)            no
+  rho(|r|) at lag 1                                        +0.1316   vs > 0                       yes
+  rho(|r|) at lag 100                                      +0.0430   vs > 0, slow decay           yes
+  decay exponent of rho(|r|)                                  0.29   vs < 1 (long memory)         yes
 
-  [no chaser]  99,992 tick returns, 54.9% of them exactly zero
-  excess kurtosis of tick returns                            10.89   vs > 0 (heavy tailed)        yes
-  Hill tail index of |r|, top 5%                              3.29   vs 2 to 5                    yes
-  excess kurtosis, 100-tick aggregation                      16.14   vs < 10.89 (toward 0)        no
-  lag-1 autocorrelation of tick returns                    +0.0279   vs ~0 (Cont 2001)            yes
-  rho(|r|) at lag 1                                        +0.1305   vs > 0                       yes
-  rho(|r|) at lag 100                                      +0.0098   vs > 0, slow decay           yes
-  decay exponent of rho(|r|)                                  0.83   vs < 1 (long memory)         yes
+  [no chaser]  99,999 tick returns, 63.3% of them exactly zero
+  excess kurtosis of tick returns                            13.32   vs > 0 (heavy tailed)        yes
+  Hill tail index of |r|, top 5%                              3.02   vs 2 to 5                    yes
+  excess kurtosis, 100-tick aggregation                       4.73   vs < 13.32 (toward 0)        yes
+  lag-1 autocorrelation of tick returns                    -0.0586   vs ~0 (Cont 2001)            no
+  rho(|r|) at lag 1                                        +0.1154   vs > 0                       yes
+  rho(|r|) at lag 100                                      +0.0399   vs > 0, slow decay           yes
+  decay exponent of rho(|r|)                                  0.22   vs < 1 (long memory)         yes
 
 2b. Microstructure facts (Roll 1984; Bouchaud et al. 2002, 2004)
 ----------------------------------------------------------------
 
-  [demo mix]  29,882 trades
-  lag-1 autocorrelation of trade-price changes              -0.370   vs in [-0.5, 0)              yes
-  order-flow sign memory: decay exponent gamma                0.94   vs ~0.5                      no
-  order-flow memory horizon, in trades                          69   vs thousands of trades       no
-  depth peaks away from the touch             0.43 (2.1% at touch)   vs > 0 (humped)              yes
-  market maker's passive markout, h=10                    -0.42518   vs < 0 (adversely selected)  yes
+  [demo mix]  80,706 trades
+  lag-1 autocorrelation of trade-price changes              -0.245   vs in [-0.5, 0)              yes
+  order-flow sign memory: decay exponent gamma                1.29   vs ~0.5                      no
+  order-flow memory horizon, in trades                          89   vs thousands of trades       no
+  depth peaks away from the touch             1.28 (5.2% at touch)   vs > 0 (humped)              yes
+  market maker's passive markout, h=10                    -0.01745   vs < 0 (adversely selected)  yes
 
-  [no chaser]  27,612 trades
-  lag-1 autocorrelation of trade-price changes              -0.461   vs in [-0.5, 0)              yes
-  order-flow sign memory: decay exponent gamma    no memory to fit   vs ~0.5                      no
-  order-flow memory horizon, in trades                           0   vs thousands of trades       no
-  depth peaks away from the touch             0.43 (1.6% at touch)   vs > 0 (humped)              yes
-  market maker's passive markout, h=10                    -0.05490   vs < 0 (adversely selected)  yes
+  [no chaser]  61,212 trades
+  lag-1 autocorrelation of trade-price changes              -0.253   vs in [-0.5, 0)              yes
+  order-flow sign memory: decay exponent gamma                0.52   vs ~0.5                      yes
+  order-flow memory horizon, in trades                         128   vs thousands of trades       no
+  depth peaks away from the touch             1.28 (5.4% at touch)   vs > 0 (humped)              yes
+  market maker's passive markout, h=10                    -0.02974   vs < 0 (adversely selected)  yes
 
 2c. The impact of a metaorder (Almgren et al. 2005; Gatheral 2010)
 ------------------------------------------------------------------
      a parent order worked in 8-lot children every other tick
 
   [demo mix]
-    Q=   20  shortfall=+0.2520  net of half-spread=+0.0741  peak impact=+0.0773
-    Q=   40  shortfall=+0.2902  net of half-spread=+0.1123  peak impact=+0.1142
-    Q=   80  shortfall=+0.4265  net of half-spread=+0.2486  peak impact=+0.4910
-    Q=  160  shortfall=+0.9325  net of half-spread=+0.7546  peak impact=+1.9115
-    Q=  320  shortfall=+2.7936  net of half-spread=+2.6156  peak impact=+6.0263
-    Q=  640  shortfall=+5.9928  net of half-spread=+5.8148  peak impact=+11.5813
-    Q= 1280  shortfall=+11.0756  net of half-spread=+10.8977  peak impact=+20.2060
-  exponent of shortfall incl. half-spread                     0.99   vs 0.5 to 0.6                no
-  exponent of shortfall net of half-spread                    1.30   vs 0.5 to 0.6                no
-  exponent of peak mid impact                                 1.47   vs 0.5 to 0.6                no
+    Q=   20  shortfall=+0.0577  net of half-spread=+0.0238  peak impact=+0.0309
+    Q=   40  shortfall=+0.0768  net of half-spread=+0.0428  peak impact=+0.0526
+    Q=   80  shortfall=+0.1047  net of half-spread=+0.0707  peak impact=+0.0805
+    Q=  160  shortfall=+0.1384  net of half-spread=+0.1044  peak impact=+0.1164
+    Q=  320  shortfall=+0.1847  net of half-spread=+0.1507  peak impact=+0.1433
+    Q=  640  shortfall=+0.2325  net of half-spread=+0.1985  peak impact=+0.2395
+    Q= 1280  shortfall=+0.3056  net of half-spread=+0.2716  peak impact=+0.3120
+  exponent of shortfall incl. half-spread                     0.40   vs 0.5 to 0.6                yes
+  exponent of shortfall net of half-spread                    0.57   vs 0.5 to 0.6                yes
+  exponent of peak mid impact                                 0.54   vs 0.5 to 0.6                yes
 
   [no chaser]
-    Q=   20  shortfall=+0.2015  net of half-spread=+0.0351  peak impact=+0.0754
-    Q=   40  shortfall=+0.2547  net of half-spread=+0.0883  peak impact=+0.1642
-    Q=   80  shortfall=+0.3504  net of half-spread=+0.1840  peak impact=+0.3408
-    Q=  160  shortfall=+0.6044  net of half-spread=+0.4379  peak impact=+0.8508
-    Q=  320  shortfall=+1.0759  net of half-spread=+0.9094  peak impact=+1.7952
-    Q=  640  shortfall=+2.5626  net of half-spread=+2.3961  peak impact=+6.1096
-    Q= 1280  shortfall=+6.7715  net of half-spread=+6.6051  peak impact=+15.7158
-  exponent of shortfall incl. half-spread                     0.84   vs 0.5 to 0.6                no
-  exponent of shortfall net of half-spread                    1.23   vs 0.5 to 0.6                no
-  exponent of peak mid impact                                 1.28   vs 0.5 to 0.6                no
+    Q=   20  shortfall=+0.0565  net of half-spread=+0.0242  peak impact=+0.0291
+    Q=   40  shortfall=+0.0672  net of half-spread=+0.0349  peak impact=+0.0334
+    Q=   80  shortfall=+0.0836  net of half-spread=+0.0513  peak impact=+0.0492
+    Q=  160  shortfall=+0.1099  net of half-spread=+0.0776  peak impact=+0.0936
+    Q=  320  shortfall=+0.1585  net of half-spread=+0.1262  peak impact=+0.1504
+    Q=  640  shortfall=+0.2149  net of half-spread=+0.1826  peak impact=+0.2198
+    Q= 1280  shortfall=+0.2853  net of half-spread=+0.2530  peak impact=+0.2775
+  exponent of shortfall incl. half-spread                     0.40   vs 0.5 to 0.6                yes
+  exponent of shortfall net of half-spread                    0.58   vs 0.5 to 0.6                yes
+  exponent of peak mid impact                                 0.60   vs 0.5 to 0.6                yes
 ```
 
 The exponents in section 2c are fitted on parent orders held to a fixed
 child size and a fixed cadence, so the execution horizon grows with the
-parent. `examples/execution_costs.py` fits the same law the other way round,
-at a fixed horizon with a varying rate expressed as a participation rate, and
-gets 1.75. Both are convex; neither is 0.5.
+parent: that is the size law, and it comes out concave at 0.57 and 0.58,
+inside the published 0.5 to 0.6 band. `examples/execution_costs.py` fits
+the other law, at a fixed horizon with a varying participation rate, and
+gets 1.39: convex, because a bigger parent there means trading faster
+rather than trading for longer. One simulator, two curves, and the sign of
+the curvature depends on which one you asked for.
 
 ---
 
