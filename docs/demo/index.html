@@ -1330,7 +1330,7 @@ async function computeFeed() {
   $("#feedState").textContent = "parsing";
   FEED = await pyJSON("sim.replay_feed()");
   runs += 1; tally();
-  feedI = 0; feedTiles(); drawFeed(); sayFeed();
+  feedI = 0; feedTiles(); drawFeed(); sayFeed(); fillScore();
   $("#feedPlay").addEventListener("click", () => {
     if (!feedOn && feedI >= FEED.n - 1) feedI = 0;
     feedOn = !feedOn; feedSetPlay();
