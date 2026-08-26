@@ -242,7 +242,7 @@ can never tell you to trade only part of the way.
 `examples/execution_costs.py` is the join. It calibrates `cost = k *
 participation^delta` off simulated metaorders, then hands that curve to a
 three-asset mean-variance problem inlined in the same file (nothing is
-imported from the sibling repos; the upstream inputs are written out):
+imported from any portfolio library; the upstream inputs are written out):
 
 ```
   cost per share = 0.437 * participation^1.39, fitted over 18%-63% participation
