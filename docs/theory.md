@@ -99,24 +99,29 @@ and all higher-order autocovariances vanish. Two things fall out.
 **The spread is observable from trade prices alone.** The first
 autocovariance doesn't depend on $\sigma^2$ at all, so
 $\hat{s} = 2\sqrt{-\gamma_1}$ estimates the spread even when you never saw a
-quote. On the demo mix over 100,000 ticks, $\gamma_1 = -0.044735$, giving
-$\hat{s} = 0.4230$. The book's own time-averaged quoted spread over the same
-run is $0.3624$, but the mean spread *at the ticks where a trade printed*
-is $0.4505$. Roll's estimator isn't measuring the average quote; it is
-measuring the spread actually paid, and it lands between the two, much
-closer to the one it's supposed to recover. Crossing flow arrives
-preferentially when the book is wide.
+quote. On the demo mix over 100,000 ticks, $\gamma_1 = -0.003319$, giving
+$\hat{s} = 0.1152$. The book's own time-averaged quoted spread over the same
+run is $0.1915$, and the mean spread *at the ticks where a trade printed*
+is $0.2117$: crossing flow still arrives preferentially when the book is
+wide. Roll recovers roughly half of the spread actually paid, and the
+shortfall is instructive rather than embarrassing. The estimator prices the
+*alternation*, and with trade signs as persistent as §5 measures,
+consecutive prints on the same side contribute no bounce to $\gamma_1$,
+while a chunk of the quoted spread is never crossed at all. An estimator
+imported with its assumptions attached measures its model, not the book.
 
 **The autocorrelation is bounded.**
 
 $$\rho_1 = \frac{-c^2}{\sigma^2 + 2c^2} \in [-\tfrac12, 0],$$
 
 reaching $-1/2$ only when the efficient price doesn't move between trades.
-Measured: $-0.461$ with only noise traders and a market maker, $-0.370$ once
-the momentum agent is added. The gap is informative. Inverting the formula,
-the second case has $\sigma \approx 0.42\,s$ of genuine price innovation per
-trade against $0.21\,s$ for the first. The chaser isn't just adding noise;
-it is moving the efficient price.
+Measured: $-0.253$ without the momentum agent, $-0.245$ with it. That gap
+used to be wide, and its collapse is informative. Inverting the formula,
+both mixes now carry about the same genuine price innovation per trade,
+$\sigma \approx 0.70\,s$ and $0.72\,s$: the fundamental's own random walk,
+which the value ladder transmits into the book, dominates the efficient
+price in either mix, and the chaser's contribution on top of it is
+marginal.
 
 None of this is a property of a simulator. It's why a trade-price series
 sampled tick-by-tick is a terrible estimate of volatility, and why
@@ -132,14 +137,16 @@ $$VR(q) = \frac{\operatorname{Var}(p_t - p_{t-q})}{q \operatorname{Var}(p_t - p_
 A random walk gives $VR \equiv 1$. Below 1 means mean reversion, above 1
 means trending, and the identity says the whole curve is just a weighted
 sum of autocorrelations, so §3 already determines its left end. With
-$\rho_1 = -0.370$ and $\rho_{k>1} \approx 0$, the model predicts
-$VR(2) = 1 + \rho_1 = 0.630$; the measured value is $0.63$.
+$\rho_1 = -0.245$ and $\rho_{k>1} \approx 0$, the model predicts
+$VR(2) = 1 + \rho_1 = 0.755$; the measured value is $0.755$.
 
 The full curves say something the single number cannot:
 
-- **Trade prices** start at $0.63$, bottom out near $0.48$ around $q = 5$,
-  then climb back through 1 somewhere between $q = 20$ and $q = 50$. Bounce
-  dominates at short horizons; the underlying drift takes over at long ones.
+- **Trade prices** start at $0.755$ and only fall: $0.41$ by $q = 5$,
+  $0.14$ by $q = 20$, $0.06$ by $q = 100$. Bounce dominates the short end,
+  and instead of a drift taking over at long horizons, the value anchor's
+  mean reversion compounds on top of it, so the curve never climbs back
+  through 1. Nothing in this market trends.
 - **Mid prices** have no bounce in them, and they sub-diffuse:
   $VR(100) = 0.45$ with the momentum agent and $0.43$ without it. The value
   trader pulls price back toward its fundamental, so the mid mean reverts.
@@ -195,13 +202,15 @@ and Potters derived and measured in 2002. The intuition is adverse
 selection: sitting at the touch is where you get run over, so liquidity
 providers post size where the price has to travel to reach them.
 
-The measured profile is humped, peaking $0.43$ away from the mid while the
-mean half-spread is only $0.18$; the innermost bin holds about 2% of the
+The measured profile is humped, peaking $1.28$ away from the mid while the
+mean half-spread is only $0.0957$; the innermost bin holds about 5% of the
 peak's size. But be careful what that buys. Here the hump's *location* is
-set by `NoiseAgent(spread_offset=0.6)` sampling a uniform offset and
-`MarketMakerAgent(half_spread=0.4)` posting at a fixed distance, so it is a
-property of the quoting kernel, not an emergent response to adverse
-selection. Change those parameters and the peak moves with them. The right
+set by the quoting kernels: `NoiseAgent(spread_offset=0.6)` sampling a
+uniform offset, `MarketMakerAgent(half_spread=0.4)` posting at a fixed
+distance, and the value ladder refilling rungs every $0.05$ out to $2.0$
+with size growing in the rung index. It is a property of those parameters,
+not an emergent response to adverse
+selection. Change them and the peak moves with them. The right
 shape for the wrong reason is still worth knowing; it is not worth
 overselling.
 
@@ -311,10 +320,15 @@ mislabelling and it's worth not repeating.
 
 Stated plainly, because the scorecard makes it measurable:
 
-- **No informed traders.** No agent has a view on value, so there is nothing
-  to anchor the price and nothing for the market maker to actually be
-  adversely selected *by*. Markout here comes from momentum, not information.
-- **No parent orders.** Hence no real long memory (§5).
+- **One informed trader, and only by another name.** `ValueAgent` has a
+  level in mind and anchors the price to it, too hard: the mid mean reverts
+  ($VR(100) \approx 0.45$, §4) instead of following a random walk. No agent
+  carries private information about a *future* price, because no such
+  future exists here to know about; markout comes from momentum and the
+  anchor, not information.
+- **Parent orders only by another name.** The value ladder's refill is a
+  split parent order in effect, which is why order-flow memory has the
+  right sign without the published thousands-of-trades horizon (§5).
 - **No tick size.** Prices are floats rounded to two decimals at agent
   boundaries. Real venues quantise to a tick, and queue dynamics at the
   touch depend on it heavily.

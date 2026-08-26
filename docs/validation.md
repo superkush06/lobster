@@ -159,8 +159,11 @@ consumes faster than that outruns replenishment and walks outward into the
 thicker rungs. Cancel and replace the whole ladder every tick instead and the
 book becomes perfectly elastic: price snaps back between children and impact
 vanishes, which is as wrong as the convex answer in the other direction.
-Raising `slope` or `refill` far enough does the same thing more gently, and
-drives the exponent back toward 1.
+Raising `slope` and `refill` barely moves it: rerunning this section with
+both at 2x and 4x their defaults reads 0.58 and 0.60 against 0.57. What
+the ladder's parameters control is the regime, not the exponent's position
+inside it; remove the ladder entirely and cost leaves the concave band
+altogether, which is exactly the failure this section opened with.
 
 Two measurement notes, because both change the answer:
 
@@ -253,14 +256,18 @@ got more precise. `lobster` is measurably sound as a **mechanism**: price-time
 priority, queue position, spread and adverse-selection accounting, and the
 cost of walking a book are all correct, and the estimators that measure them
 recover known answers to within a per cent. It's measurably *not* a
-realistic **price process**: order flow has no memory to speak of, the mid
-trends when it should not, and impact curves the wrong way.
+realistic **price process**: order-flow memory has the right sign but dies
+within a hundred trades where real flow persists for thousands, and the
+mid over-corrects, reverting at $VR(100)$ around 0.44 where a random walk
+reads 1.
 
 Use it for questions about the queue and about execution mechanics. Don't
 use it to calibrate a cost model you intend to point at a real market.
-`examples/execution_costs.py` shows the shape of that workflow deliberately
-using the simulator's own convex exponent, and says in its own output that
-the exponent isn't the one the literature reports.
+`examples/execution_costs.py` shows the shape of that workflow on the
+fixed-horizon participation curve, which is convex here for the reason the
+README gives (a bigger parent at a fixed horizon means trading faster),
+and says in its own output that the concave size law near 0.5 is the one
+section 2c measures separately.
 
 ---
 
