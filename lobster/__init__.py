@@ -32,7 +32,7 @@ from .sim import Simulation
 from .stylized import ReturnFacts, StylizedFacts, depth_profile, variance_ratio
 from .tape import Tape, Trade
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 __all__ = [
     "Side", "OrderType", "Order", "next_order_id",
     "PriceLevel", "OrderBook",
